@@ -1,0 +1,13 @@
+{
+    "devDependencies": {
+        "@types/bun": "latest"
+    },
+    "name": "dmmd-icdn",
+    "peerDependencies": {
+        "typescript": "^5"
+    },
+    "private": true,
+    "dependencies": {
+        "chalk": "^5.4.1"
+    }
+}
