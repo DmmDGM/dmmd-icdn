@@ -1,4 +1,3 @@
 # DmmD / Image CDN (dmmd-icdn)
 
-## About
-
+working on it
