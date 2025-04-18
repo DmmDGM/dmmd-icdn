@@ -5,6 +5,6 @@ import nodePath from "node:path";
 export const rootPath = nodePath.resolve(import.meta.dir, "../");
 
 // Defines environment variables
-export const contentPath = nodePath.resolve(rootPath, process.env.CONTENT_PATH ?? "content/");
-export const dataPath = nodePath.resolve(rootPath, process.env.DATA_PATH ?? "data.sqlite");
+export const contentPath = nodePath.resolve(rootPath, process.env.CONTENT_PATH ?? "contents/");
+export const storePath = nodePath.resolve(rootPath, process.env.STORE_PATH ?? "store.sqlite");
 export const port = +(process.env.PORT ?? "1364");

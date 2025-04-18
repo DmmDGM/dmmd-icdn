@@ -15,6 +15,15 @@ export type Content<Data extends object> = {
     uuid: string;
 };
 
+// Definse packet type
+export type Packet<Data extends object> = {
+    data: Data;
+    name: string;
+    tags: string[];
+    time: number;
+    uuid: string;
+};
+
 // Defines schema type
 export type Schema = {
     ContentId: string;
@@ -23,7 +32,6 @@ export type Schema = {
     Tags: string;
     Time: number;
 };
-
 // Defines source type
 export type Source<Data extends object> = {
     data: Data;
@@ -33,11 +41,11 @@ export type Source<Data extends object> = {
     time: Date;
 };
 
-// Creates database
-export const contents = bunSqlite.open(env.dataPath);
-contents.run(`
+// Creates store
+export const store = bunSqlite.open(env.storePath);
+store.run(`
     CREATE TABLE IF NOT EXISTS Contents (
-        ContentId TEXT NOT NULL UNIQUE PRIMARY KEY,
+        ContentId TEXT UNIQUE PRIMARY KEY,
         Data TEXT NOT NULL,
         Name TEXT NOT NULL,
         Tags TEXT NOT NULL,
@@ -48,7 +56,7 @@ contents.run(`
 // Defines query function
 export function query<Data extends object>(uuid: string): Content<Data> | null {
     // Creates query
-    const schema = contents.query(`
+    const schema = store.query(`
         SELECT ContentId, Data, Name, Tags, Time
         FROM Contents
         WHERE ContentId = ?
@@ -67,17 +75,29 @@ export function query<Data extends object>(uuid: string): Content<Data> | null {
     };
 }
 
+// Defines all function
+export function all(): Content<object>[] {
+    // Creates query
+    const schemas = store.query(`
+        SELECT ContentId
+        FROM Contents
+    `).all() as Schema[];
+
+    // Returns query
+    return schemas.map((schema) => query(schema.ContentId)!);
+}
+
 // Defines search function
 export function search(filter: {
     begin?: Date,
     end?: Date,
     loose?: boolean,
-    order?: "ascending" | "descending",
     name?: string,
+    order?: "ascending" | "descending",
     sort?: "name" | "time" | "uuid",
     tags?: string[],
     uuid?: string,
-} = {}, count: number = 25, page: number = 0): Content<object>[] {
+} = {}, count: number = Infinity, page: number = 0): string[] {
     // Creates escaper
     const escape = (string: string) => string.replaceAll(/\\%_/g, "\\$0");
 
@@ -96,7 +116,7 @@ export function search(filter: {
             `',' || Tags || ',' LIKE '%,${escape(tag.replaceAll(/,/g, ""))},%' ESCAPE '\\'`
         ));
     if(typeof filter.uuid !== "undefined")
-        parameters.push(`ContentId = ${filter.uuid}`);
+        parameters.push(`ContentId = '${filter.uuid}'`);
     const join = filter.loose ? " OR " : " AND ";
     const conditions = parameters.length === 0 ? "" : `WHERE ${parameters.join(join)}`;
 
@@ -110,43 +130,34 @@ export function search(filter: {
 
     // Creates limit
     const offset = count * page;
-    const limit = `LIMIT ${count} OFFSET ${offset}`;
+    const limit = isFinite(count) ? `LIMIT ${count} OFFSET ${offset}` : "";
     
     // Creates query
-    const schemas = contents.query(`
-        SELECT ContentId, Data, Name, Tags, Time
+    const schemas = store.query(`
+        SELECT ContentId
         FROM Contents
         ${conditions} ${sort} ${limit};
     `).all() as Schema[];
 
     // Returns query
-    return schemas.map((schema) => ({
-        data: JSON.parse(schema.Data),
-        file: Bun.file(nodePath.resolve(env.contentPath, schema.ContentId)),
-        name: schema.Name,
-        tags: schema.Tags.split(","),
-        time: new Date(schema.Time),
-        uuid: schema.ContentId
-    }));
+    return schemas.map((schema) => schema.ContentId);
 }
 
-// Defines all function
-export function all(): Content<object>[] {
+// Defines list function
+export function list(count: number = Infinity, page: number = 0): string[] {
+    // Creates limit
+    const offset = count * page;
+    const limit = isFinite(count) ? `LIMIT ${count} OFFSET ${offset}` : "";
+    
     // Creates query
-    const schemas = contents.query(`
-        SELECT ContentId, Data, Name, Tags, Time
+    const schemas = store.query(`
+        SELECT ContentId
         FROM Contents
+        ${limit};
     `).all() as Schema[];
 
     // Returns query
-    return schemas.map((schema) => ({
-        data: JSON.parse(schema.Data),
-        file: Bun.file(nodePath.resolve(env.contentPath, schema.ContentId)),
-        name: schema.Name,
-        tags: schema.Tags.split(","),
-        time: new Date(schema.Time),
-        uuid: schema.ContentId
-    }));
+    return schemas.map((schema) => schema.ContentId);
 }
 
 // Defines add function
@@ -168,7 +179,7 @@ export async function add<Data extends object>(source: Source<Data>): Promise<Co
 
     // Adds data
     await content.file.write(await source.file.bytes());
-    contents.run(`
+    store.run(`
         INSERT INTO Contents (ContentId, Data, Name, Tags, Time)
         VALUES (?, ?, ?, ?, ?)
     `, [
@@ -189,7 +200,7 @@ export async function update<Data extends object>(content: Content<Data>): Promi
     if(!query<Data>(content.uuid)) throw new Error("Content not found");
 
     // Updates content
-    contents.run(`
+    store.run(`
         UPDATE Contents
         SET Data = ?,
             Name = ?,
@@ -218,11 +229,26 @@ export async function remove<Data extends object>(uuid: string): Promise<Content
 
     // Removes content
     await content.file.delete();
-    contents.run(`
+    store.run(`
         DELETE FROM Content
         WHERE ContentId = ?
     `, [ content.uuid ]);
 
     // Returns content
     return content;
+}
+
+// Defines pack function
+export function pack<Data extends object>(content: Content<Data>): Packet<Data> {
+    // Creates packet
+    const packet: Packet<Data> = {
+        data: content.data,
+        name: content.name,
+        tags: content.tags,
+        time: content.time.getTime(),
+        uuid: content.uuid
+    };
+
+    // Returns packet
+    return packet;
 }

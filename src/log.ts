@@ -17,8 +17,36 @@ export function now(): string {
     return string;
 }
 
-// Defines loggers
-export function info(message: string): void {
+// Defines listen log
+export function listen(port: number): void {
+    // Constructs message
+    const banner = `[${now()}] LISTEN`;
+    const url = `http://localhost:${port}/`;
+    const content = `Server listening on port ${chalk.cyan(port)} (${chalk.cyan(url)})`;
+    const message = chalk.green(`${banner} | ${content}`);
+
     // Prints message
-    console.log(chalk.cyan(`[${now()}] INFO | ${message}`));
+    console.log(message);
+}
+
+// Defines info log
+export function info(content: string): void {
+    // Constructs message
+    const banner = `[${now()}] INFO`;
+    const message = chalk.blue(`${banner} | ${content}`);
+
+    // Prints message
+    console.log(message);
+}
+
+// Defines route log
+export function route(request: Request, response: Response): void {
+    // Constructs message
+    const banner = `[${now()}] ROUTE`;
+    const content = `Accessed ${chalk.cyan(request.url)} with status ${chalk.cyan(response.status)}`;
+    const status = response.ok ? chalk.green("(OK)") : chalk.red("(FAILED)");
+    const message = chalk.yellowBright(`${banner} | ${content} ${status}`);
+
+    // Prints message
+    console.log(message);
 }

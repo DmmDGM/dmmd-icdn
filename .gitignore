@@ -1,4 +1,4 @@
-content/
+contents/
 node_modules/
 .env
-data.sqlite
+store.sqlite
