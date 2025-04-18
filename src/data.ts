@@ -1,6 +1,7 @@
 // Imports
 import type { BunFile } from "bun";
 import bunSqlite from "bun:sqlite";
+import nodeFile from "node:fs/promises";
 import nodePath from "node:path";
 import * as env from "./env";
 
@@ -10,8 +11,7 @@ export type Content<Data extends object> = {
     file: BunFile;
     name: string;
     tags: string[];
-    timestamp: Date;
-    type: string;
+    time: Date;
     uuid: string;
 };
 
@@ -21,8 +21,7 @@ export type Schema = {
     Data: string;
     Name: string;
     Tags: string;
-    Timestamp: number;
-    Type: string;
+    Time: number;
 };
 
 // Defines source type
@@ -31,7 +30,7 @@ export type Source<Data extends object> = {
     file: BunFile;
     name: string;
     tags: string[];
-    timestamp: Date;
+    time: Date;
 };
 
 // Creates database
@@ -42,117 +41,188 @@ contents.run(`
         Data TEXT NOT NULL,
         Name TEXT NOT NULL,
         Tags TEXT NOT NULL,
-        Timestamp INTEGER
-        Type TEXT NOT NULL,
+        Time INTEGER
     );
 `);
 
-// Defines fetchers
+// Defines query function
 export function query<Data extends object>(uuid: string): Content<Data> | null {
     // Creates query
-    const content = contents.query(`
-        SELECT ContentId, Data, Name, Tags, Timestamp, Type
+    const schema = contents.query(`
+        SELECT ContentId, Data, Name, Tags, Time
         FROM Contents
-        WHERE ContentId = ?;
+        WHERE ContentId = ?
+        LIMIT 1;
     `).get(uuid) as Schema | null;
 
     // Returns query
-    return content === null ? null : {
-        data: JSON.parse(content.Data),
-        file: Bun.file(nodePath.resolve(env.contentPath, uuid) + "." + content.Type),
-        name: content.Name,
-        tags: content.Tags.split(","),
-        timestamp: new Date(content.Timestamp),
-        type: content.Type,
-        uuid: content.ContentId
+    if(schema === null) return null;
+    return {
+        data: JSON.parse(schema.Data),
+        file: Bun.file(nodePath.resolve(env.contentPath, schema.ContentId)),
+        name: schema.Name,
+        tags: schema.Tags.split(","),
+        time: new Date(schema.Time),
+        uuid: schema.ContentId
     };
 }
 
-export async function update<Data extends object>(content: Content<Data>): Promise<void> {
-    // Inserts content
+// Defines search function
+export function search(filter: {
+    begin?: Date,
+    end?: Date,
+    loose?: boolean,
+    order?: "ascending" | "descending",
+    name?: string,
+    sort?: "name" | "time" | "uuid",
+    tags?: string[],
+    uuid?: string,
+} = {}, count: number = 25, page: number = 0): Content<object>[] {
+    // Creates escaper
+    const escape = (string: string) => string.replaceAll(/\\%_/g, "\\$0");
+
+    // Creates conditions
+    let parameters: string[] = [];
+    if(typeof filter.begin !== "undefined" && typeof filter.end !== "undefined")
+        parameters.push(`Time Between ${filter.begin.getTime()} AND ${filter.end.getTime()}`);
+    else if(typeof filter.begin !== "undefined")
+        parameters.push(`Time >= ${filter.begin.getTime()}`);
+    else if(typeof filter.end !== "undefined")
+        parameters.push(`Time <= ${filter.end.getTime()}`);
+    if(typeof filter.name !== "undefined")
+        parameters.push(`Name LIKE '%${escape(filter.name)}%' ESCAPE '\\'`);
+    if(typeof filter.tags !== "undefined")
+        parameters = parameters.concat(filter.tags.map((tag) =>
+            `',' || Tags || ',' LIKE '%,${escape(tag.replaceAll(/,/g, ""))},%' ESCAPE '\\'`
+        ));
+    if(typeof filter.uuid !== "undefined")
+        parameters.push(`ContentId = ${filter.uuid}`);
+    const join = filter.loose ? " OR " : " AND ";
+    const conditions = parameters.length === 0 ? "" : `WHERE ${parameters.join(join)}`;
+
+    // Creates sort
+    const order = typeof filter.order === "undefined" || filter.order === "descending" ? "DESC" : "ASC";
+    const sort = `ORDER BY ${{
+        "name": "Name, Time, ContentId",
+        "time": "Time, Name, ContentId",
+        "uuid": "ContentId"
+    }[typeof filter.sort === "undefined" ? "time" : filter.sort]} ${order}`;
+
+    // Creates limit
+    const offset = count * page;
+    const limit = `LIMIT ${count} OFFSET ${offset}`;
+    
+    // Creates query
+    const schemas = contents.query(`
+        SELECT ContentId, Data, Name, Tags, Time
+        FROM Contents
+        ${conditions} ${sort} ${limit};
+    `).all() as Schema[];
+
+    // Returns query
+    return schemas.map((schema) => ({
+        data: JSON.parse(schema.Data),
+        file: Bun.file(nodePath.resolve(env.contentPath, schema.ContentId)),
+        name: schema.Name,
+        tags: schema.Tags.split(","),
+        time: new Date(schema.Time),
+        uuid: schema.ContentId
+    }));
+}
+
+// Defines all function
+export function all(): Content<object>[] {
+    // Creates query
+    const schemas = contents.query(`
+        SELECT ContentId, Data, Name, Tags, Time
+        FROM Contents
+    `).all() as Schema[];
+
+    // Returns query
+    return schemas.map((schema) => ({
+        data: JSON.parse(schema.Data),
+        file: Bun.file(nodePath.resolve(env.contentPath, schema.ContentId)),
+        name: schema.Name,
+        tags: schema.Tags.split(","),
+        time: new Date(schema.Time),
+        uuid: schema.ContentId
+    }));
+}
+
+// Defines add function
+export async function add<Data extends object>(source: Source<Data>): Promise<Content<Data>> {
+    // Checks source
+    if(!source.file.type.startsWith("image") && !source.file.type.startsWith("video"))
+        throw new Error("Source file MIME type not accepted");
+
+    // Creates content
+    const uuid = Bun.randomUUIDv7();
+    const content: Content<Data> = {
+        data: source.data,
+        file: Bun.file(nodePath.resolve(env.contentPath, uuid)),
+        name: source.name,
+        tags: source.tags,
+        time: source.time,
+        uuid: uuid
+    };
+
+    // Adds data
+    await content.file.write(await source.file.bytes());
+    contents.run(`
+        INSERT INTO Contents (ContentId, Data, Name, Tags, Time)
+        VALUES (?, ?, ?, ?, ?)
+    `, [
+        content.uuid,
+        JSON.stringify(content.data),
+        content.name,
+        content.tags.join(","),
+        content.time.getTime()
+    ]);
+
+    // Returns content
+    return content;
+}
+
+// Defines update function
+export async function update<Data extends object>(content: Content<Data>): Promise<Content<Data>> {
+    // Checks content
     if(!query<Data>(content.uuid)) throw new Error("Content not found");
 
-    // Inserts content
+    // Updates content
     contents.run(`
         UPDATE Contents
         SET Data = ?,
             Name = ?,
             Tags = ?,
-            Timestamp = ?
-            Type = ?,
+            Time = ?,
         WHERE ContentId = ?
     `, [
         JSON.stringify(content.data),
         content.name,
         content.tags.join(","),
-        content.timestamp.getTime(),
-        content.type,
+        content.time.getTime(),
         content.uuid
-    ]);
-}
-
-export async function add<Data extends object>(source: Source<Data>): Promise<Content<Data>> {
-    // Checks source file validity
-    if(!source.file.exists()) throw new Error("Source file does not exist");
-    if(!source.file.type.startsWith("image") && !source.file.type.startsWith("video"))
-        throw new Error("Source file MIME type not accepted");
-
-    // Generates uuid
-    const uuid = Bun.randomUUIDv7();
-    const path = source.file.name;
-    const file = Bun.file(nodePath.resolve(env.contentPath, uuid));
-
-    // Checks path validity
-    if(typeof path === "undefined") throw new Error("Source file path is invalid");
-
-    // Checks file availability
-    if(await file.exists()) throw new Error("Content file already exists");
-    
-    // Parses path
-    const chunks = path.split(".");
-    const name = chunks.slice(0, -1).join(".");
-    const type = chunks[chunks.length - 1];
-
-    // Prevents empty type
-    if(typeof type === "undefined") throw new Error("Source file extension is invalid");
-    
-    // Creates content
-    const content: Content<Data> = {
-        data: source.data,
-        file: Bun.file(),
-    }
-    await , await source.file.arrayBuffer());
-    contents.run(`
-        INSERT INTO Contents (ContentId, Data, Name, Tags, Timestamp, Type)
-        VALUES (?, ?, ?, ?, ?, ?)
-    `, [
-        uuid,
-        JSON.stringify(source.data),
-        name,
-        source.tags.join(","),
-        source.timestamp.getTime(),
-        type
     ]);
 
     // Returns content
-    
+    return content;
 }
 
-
-
+// Defines remove function
 export async function remove<Data extends object>(uuid: string): Promise<Content<Data> | null> {
-    // Creates query
+    // Queries content
     const content = query<Data>(uuid);
 
-    // Deletes content
+    // Checks content
     if(content === null) return null;
+
+    // Removes content
     await content.file.delete();
     contents.run(`
         DELETE FROM Content
         WHERE ContentId = ?
     `, [ content.uuid ]);
+
+    // Returns content
     return content;
 }
-
-console.log(query("ok"));
-

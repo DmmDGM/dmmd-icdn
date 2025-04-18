@@ -8,6 +8,7 @@
     },
     "private": true,
     "dependencies": {
-        "chalk": "^5.4.1"
+        "chalk": "^5.4.1",
+        "file-type": "^20.4.1"
     }
 }
