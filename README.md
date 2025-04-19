@@ -67,7 +67,13 @@ type Packet = {
 
 ### (GET) `/search`
 
-Returns a list of uuids of the contents that satisfy the filter. Below are the available parameters:
+Returns a list of uuids of the contents that satisfy the filter in the following format:
+
+```ts
+type Packet = string[];
+```
+
+Below are the available parameters:
 
 | Parameter | Description |
 |-|-|
@@ -84,7 +90,19 @@ Returns a list of uuids of the contents that satisfy the filter. Below are the a
 
 ### (GET) `/all`
 
-Returns all content data. Below are the available parameters:
+Returns all content data in the following format:
+
+```ts
+type Packet = {
+    data: object;
+    name: string;
+    tags: string[];
+    time: number;
+    uuid: string;
+}[];
+```
+
+Below are the available parameters:
 
 | Parameter | Description |
 |-|-|
@@ -93,7 +111,13 @@ Returns all content data. Below are the available parameters:
 
 ### (GET) `/list`
 
-Returns all uuids. Below are the available parameters:
+Returns all uuids in the following format:
+
+```ts
+type Packet = string[];
+```
+
+Below are the available parameters:
 
 | Parameter | Description |
 |-|-|
