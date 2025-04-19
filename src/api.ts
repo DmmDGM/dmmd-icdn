@@ -1,14 +1,13 @@
 // Imports
-import type { BunFile } from "bun";
 import bunSqlite from "bun:sqlite";
-import nodeFile from "node:fs/promises";
 import nodePath from "node:path";
+import { fileTypeFromBuffer } from "file-type";
 import * as env from "./env";
 
 // Defines content type
 export type Content<Data extends object> = {
     data: Data;
-    file: BunFile;
+    file: Bun.BunFile;
     name: string;
     tags: string[];
     time: Date;
@@ -32,10 +31,11 @@ export type Schema = {
     Tags: string;
     Time: number;
 };
+
 // Defines source type
 export type Source<Data extends object> = {
     data: Data;
-    file: BunFile;
+    file: Bun.BunFile;
     name: string;
     tags: string[];
     time: Date;
@@ -99,24 +99,40 @@ export function search(filter: {
     uuid?: string,
 } = {}, count: number = Infinity, page: number = 0): string[] {
     // Creates escaper
-    const escape = (string: string) => string.replaceAll(/\\%_/g, "\\$0");
+    const escape = (string: string) => string.replace(/[\\%_]/g, "\\$0");
 
     // Creates conditions
+    let values: (string | number)[] = [];
     let parameters: string[] = [];
-    if(typeof filter.begin !== "undefined" && typeof filter.end !== "undefined")
-        parameters.push(`Time Between ${filter.begin.getTime()} AND ${filter.end.getTime()}`);
-    else if(typeof filter.begin !== "undefined")
-        parameters.push(`Time >= ${filter.begin.getTime()}`);
-    else if(typeof filter.end !== "undefined")
-        parameters.push(`Time <= ${filter.end.getTime()}`);
-    if(typeof filter.name !== "undefined")
-        parameters.push(`Name LIKE '%${escape(filter.name)}%' ESCAPE '\\'`);
-    if(typeof filter.tags !== "undefined")
-        parameters = parameters.concat(filter.tags.map((tag) =>
-            `',' || Tags || ',' LIKE '%,${escape(tag.replaceAll(/,/g, ""))},%' ESCAPE '\\'`
+    if(typeof filter.begin !== "undefined" && typeof filter.end !== "undefined") {
+        parameters.push("Time Between ? AND ?");
+        values.push(filter.begin.getTime());
+        values.push(filter.end.getTime());
+    }
+    else if(typeof filter.begin !== "undefined") {
+        parameters.push("Time >= ?");
+        values.push(filter.begin.getTime());
+    }
+    else if(typeof filter.end !== "undefined") {
+        parameters.push("Time <= ?");
+        values.push(filter.end.getTime());
+    }
+    if(typeof filter.name !== "undefined") {
+        parameters.push(`Name LIKE ? ESCAPE '\\'`);
+        values.push(`%${escape(filter.name)}%`);
+    }
+    if(typeof filter.tags !== "undefined") {
+        parameters = parameters.concat(new Array(filter.tags.length).fill(
+            "',' || Tags || ',' LIKE ? ESCAPE '\\'"
         ));
-    if(typeof filter.uuid !== "undefined")
-        parameters.push(`ContentId = '${filter.uuid}'`);
+        values = values.concat(filter.tags.map((tag) => 
+            `%,${escape(tag.replaceAll(/,/g, ""))},%`
+        ));
+    }
+    if(typeof filter.uuid !== "undefined") {
+        parameters.push(`ContentId = ?`);
+        values.push(filter.uuid);
+    }
     const join = filter.loose ? " OR " : " AND ";
     const conditions = parameters.length === 0 ? "" : `WHERE ${parameters.join(join)}`;
 
@@ -130,14 +146,15 @@ export function search(filter: {
 
     // Creates limit
     const offset = count * page;
-    const limit = isFinite(count) ? `LIMIT ${count} OFFSET ${offset}` : "";
+    const limit = isFinite(count) && count > 0 && offset > 0 ?
+        `LIMIT ${Math.trunc(count)} OFFSET ${Math.trunc(offset)}` : "";
     
     // Creates query
     const schemas = store.query(`
         SELECT ContentId
         FROM Contents
         ${conditions} ${sort} ${limit};
-    `).all() as Schema[];
+    `).all(...values) as Schema[];
 
     // Returns query
     return schemas.map((schema) => schema.ContentId);
@@ -162,9 +179,15 @@ export function list(count: number = Infinity, page: number = 0): string[] {
 
 // Defines add function
 export async function add<Data extends object>(source: Source<Data>): Promise<Content<Data>> {
-    // Checks source
-    if(!source.file.type.startsWith("image") && !source.file.type.startsWith("video"))
-        throw new Error("Source file MIME type not accepted");
+    // Checks source size
+    if(source.file.size > env.fileLimit) throw new Error("Source file too large");
+
+    // Checks source type
+    const type = await fileTypeFromBuffer(await source.file.arrayBuffer());
+    if(
+        typeof type === undefined ||
+        (!source.file.type.startsWith("image/") && !source.file.type.startsWith("video/"))
+    ) throw new Error("Source file MIME type not accepted");
 
     // Creates content
     const uuid = Bun.randomUUIDv7();
@@ -195,42 +218,64 @@ export async function add<Data extends object>(source: Source<Data>): Promise<Co
 }
 
 // Defines update function
-export async function update<Data extends object>(content: Content<Data>): Promise<Content<Data>> {
-    // Checks content
-    if(!query<Data>(content.uuid)) throw new Error("Content not found");
-
-    // Updates content
+export async function update<Data extends object>(
+    uuid: string,
+    source: Partial<Source<Data>>
+): Promise<Content<Data>> {
+    // Checks uuid
+    if(!query<Data>(uuid)) throw new Error("Content not found");
+    
+    // Updates fields
+    const keys: string[] = [];
+    const values: (string | number)[] = [];
+    if("data" in source && typeof source.data !== "undefined") {
+        keys.push("Data");
+        values.push(JSON.stringify(source.data));
+    }
+    if("name" in source && typeof source.name !== "undefined") {
+        keys.push("Name");
+        values.push(source.name);
+    }
+    if("tags" in source && typeof source.tags !== "undefined") {
+        keys.push("Tags");
+        values.push(source.tags.join(","));
+    }
+    if("time" in source && typeof source.time !== "undefined") {
+        keys.push("Time");
+        values.push(source.time.getTime());
+    }
+    values.push(uuid);
     store.run(`
         UPDATE Contents
-        SET Data = ?,
-            Name = ?,
-            Tags = ?,
-            Time = ?,
+        SET ${keys.map((key) => `${key} = ?`).join(", ")}
         WHERE ContentId = ?
-    `, [
-        JSON.stringify(content.data),
-        content.name,
-        content.tags.join(","),
-        content.time.getTime(),
-        content.uuid
-    ]);
+    `, values);
+
+    // Updates file
+    if("file" in source && typeof source.file !== "undefined") {
+        if(source.file.size > env.fileLimit) throw new Error("Source file too large");
+        const type = await fileTypeFromBuffer(await source.file.arrayBuffer());
+        if(
+            typeof type === undefined ||
+            (!source.file.type.startsWith("image/") && !source.file.type.startsWith("video/"))
+        ) throw new Error("Source file MIME type not accepted");
+        await source.file.write(await source.file.bytes());
+    }
 
     // Returns content
-    return content;
+    return query<Data>(uuid)!;
 }
 
 // Defines remove function
 export async function remove<Data extends object>(uuid: string): Promise<Content<Data> | null> {
-    // Queries content
-    const content = query<Data>(uuid);
-
     // Checks content
+    const content = query<Data>(uuid);
     if(content === null) return null;
 
     // Removes content
     await content.file.delete();
     store.run(`
-        DELETE FROM Content
+        DELETE FROM Contents
         WHERE ContentId = ?
     `, [ content.uuid ]);
 

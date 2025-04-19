@@ -1,4 +1,6 @@
 contents/
 node_modules/
+temp/
 .env
+test.ts
 store.sqlite
