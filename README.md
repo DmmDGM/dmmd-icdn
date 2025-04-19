@@ -71,16 +71,16 @@ Returns a list of uuids of the contents that satisfy the filter. Below are the a
 
 | Parameter | Description |
 |-|-|
-| <code style="text-wrap: nowrap">?begin=number</code> | All content must have an associated time after the specified timestamp. |
-| <code style="text-wrap: nowrap">?count=number</code> | The number of uuids returned per page. Settings the value to `0` removes the limit. Default is `25`. |
-| <code style="text-wrap: nowrap">?end=number</code> | All content must have an associated time before the specified timestamp. |
-| <code style="text-wrap: nowrap">?loose=boolean</code> | If `true`, all filters must be satisfied for the content uuid to be returned. If `false`, only at least one filter must be satisfied for the content uuid to be returned. Default is `false`. |
-| <code style="text-wrap: nowrap">?name=string</code> | All content must contain partially or completely the specified name. |
-| <code style="text-wrap: nowrap">?order=ascending\|descending</code> | Whether the returned uuids should be sorted in ascending or descending order. Default is `descending`. |
-| <code style="text-wrap: nowrap">?page=number</code> | Page offset. Starting with `0` as the first page. Default is `0`. |
-| <code style="text-wrap: nowrap">?sort=name\|time\|uuid</code> | Sorting algorithm. Default is `time`. |
-| <code style="text-wrap: nowrap">?tags=csv</code> | All content must contain the specified tags. If multiple is specified, tags should be separated by commas. If `?loose=true`, the tags filter is also searched loosely. |
-| <code style="text-wrap: nowrap">?uuid=string</code> | The content must have the complete and exact uuid as the specified uuid. |
+| `?begin=number` | All content must have an associated time after the specified timestamp. |
+| `?count=number` | The number of uuids returned per page. Settings the value to `0` removes the limit. Default is `25`. |
+| `?end=number` | All content must have an associated time before the specified timestamp. |
+| `?loose=boolean` | If `true`, all filters must be satisfied for the content uuid to be returned. If `false`, only at least one filter must be satisfied for the content uuid to be returned. Default is `false`. |
+| `?name=string` | All content must contain partially or completely the specified name. |
+| `?order=ascending\|descending` | Whether the returned uuids should be sorted in ascending or descending order. Default is `descending`. |
+| `?page=number` | Page offset. Starting with `0` as the first page. Default is `0`. |
+| `?sort=name\|time\|uuid` | Sorting algorithm. Default is `time`. |
+| `?tags=csv` | All content must contain the specified tags. If multiple is specified, tags should be separated by commas. If `?loose=true`, the tags filter is also searched loosely. |
+| `?uuid=string` | The content must have the complete and exact uuid as the specified uuid. |
 
 ### (GET) `/all`
 
@@ -88,8 +88,8 @@ Returns all content data. Below are the available parameters:
 
 | Parameter | Description |
 |-|-|
-| <code style="text-wrap: nowrap">?count=number</code> | The number of uuids returned per page. Settings the value to `0` removes the limit. Default is `25`. |
-| <code style="text-wrap: nowrap">?page=number</code> | Page offset. Starting with `0` as the first page. Default is `0`. |
+| `?count=number` | The number of uuids returned per page. Settings the value to `0` removes the limit. Default is `25`. |
+| `?page=number` | Page offset. Starting with `0` as the first page. Default is `0`. |
 
 ### (GET) `/list`
 
@@ -97,8 +97,8 @@ Returns all uuids. Below are the available parameters:
 
 | Parameter | Description |
 |-|-|
-| <code style="text-wrap: nowrap">?count=number</code> | The number of uuids returned per page. Settings the value to `0` removes the limit. Default is `25`. |
-| <code style="text-wrap: nowrap">?page=number</code> | Page offset. Starting with `0` as the first page. Default is `0`. |
+| `?count=number` | The number of uuids returned per page. Settings the value to `0` removes the limit. Default is `25`. |
+| `?page=number` | Page offset. Starting with `0` as the first page. Default is `0`. |
 
 ### (POST) `/add`
 
