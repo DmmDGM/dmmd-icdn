@@ -1,5 +1,6 @@
 // Imports
 import bunSqlite from "bun:sqlite";
+import nodeFile from "node:fs/promises";
 import nodePath from "node:path";
 import { fileTypeFromBuffer } from "file-type";
 import * as env from "./env";
@@ -67,7 +68,7 @@ export function query<Data extends object>(uuid: string): Content<Data> | null {
     if(schema === null) return null;
     return {
         data: JSON.parse(schema.Data),
-        file: Bun.file(nodePath.resolve(env.contentPath, schema.ContentId)),
+        file: Bun.file(nodePath.resolve(env.contentsPath, schema.ContentId)),
         name: schema.Name,
         tags: schema.Tags.split(","),
         time: new Date(schema.Time),
@@ -181,11 +182,15 @@ export function list(count: number = Infinity, page: number = 0): string[] {
 export async function add<Data extends object>(source: Source<Data>): Promise<Content<Data>> {
     // Checks source size
     if(source.file.size > env.fileLimit) throw new Error("Source file too large");
+    const total = (await nodeFile.readdir(env.contentsPath))
+        .map(file => Bun.file(nodePath.resolve(env.contentsPath, file)).size)
+        .reduce((accumulator, current) => accumulator + current, 0);
+    if(total + source.file.size > env.storeLimit) throw new Error("Store limit exceeded");
 
     // Checks source type
     const type = await fileTypeFromBuffer(await source.file.arrayBuffer());
     if(
-        typeof type === undefined ||
+        typeof type === "undefined" ||
         (!source.file.type.startsWith("image/") && !source.file.type.startsWith("video/"))
     ) throw new Error("Source file MIME type not accepted");
 
@@ -193,7 +198,7 @@ export async function add<Data extends object>(source: Source<Data>): Promise<Co
     const uuid = Bun.randomUUIDv7();
     const content: Content<Data> = {
         data: source.data,
-        file: Bun.file(nodePath.resolve(env.contentPath, uuid)),
+        file: Bun.file(nodePath.resolve(env.contentsPath, uuid)),
         name: source.name,
         tags: source.tags,
         time: source.time,
@@ -225,7 +230,7 @@ export async function update<Data extends object>(
     // Checks uuid
     if(!query<Data>(uuid)) throw new Error("Content not found");
     
-    // Updates fields
+    // Parses fields
     const keys: string[] = [];
     const values: (string | number)[] = [];
     if("data" in source && typeof source.data !== "undefined") {
@@ -245,6 +250,8 @@ export async function update<Data extends object>(
         values.push(source.time.getTime());
     }
     values.push(uuid);
+
+    // Updates fields
     store.run(`
         UPDATE Contents
         SET ${keys.map((key) => `${key} = ?`).join(", ")}
@@ -253,12 +260,21 @@ export async function update<Data extends object>(
 
     // Updates file
     if("file" in source && typeof source.file !== "undefined") {
+        // Checks source size
         if(source.file.size > env.fileLimit) throw new Error("Source file too large");
+        const total = (await nodeFile.readdir(env.contentsPath))
+            .map(file => Bun.file(nodePath.resolve(env.contentsPath, file)).size)
+            .reduce((accumulator, current) => accumulator + current, 0);
+        if(total + source.file.size > env.storeLimit) throw new Error("Store limit exceeded");
+
+        // Checks source type
         const type = await fileTypeFromBuffer(await source.file.arrayBuffer());
         if(
             typeof type === undefined ||
             (!source.file.type.startsWith("image/") && !source.file.type.startsWith("video/"))
         ) throw new Error("Source file MIME type not accepted");
+
+        // Updates file
         await source.file.write(await source.file.bytes());
     }
 
