@@ -62,7 +62,6 @@ Bun.serve({
                 }
             }));
         },
-
         "/data/:uuid": async (request) => {
             // Creates content
             const content = api.query(request.params.uuid);
@@ -71,7 +70,6 @@ Bun.serve({
             // Returns response
             return recordResponse(request, Response.json(api.pack(content)));
         },
-
         "/search": async (request) => {
             // Creates parameters
             const attributes = new URL(request.url).searchParams;
@@ -122,7 +120,6 @@ Bun.serve({
             // Returns response
             return recordResponse(request, Response.json(uuids));
         },
-
         "/all": async (request) => {
             // Creates parameters
             const attributes = new URL(request.url).searchParams;
@@ -139,7 +136,6 @@ Bun.serve({
             // Returns response
             return recordResponse(request, Response.json(packets));
         },
-
         "/list": async (request) => {
             // Creates parameters
             const attributes = new URL(request.url).searchParams;
@@ -156,7 +152,6 @@ Bun.serve({
             // Returns response
             return recordResponse(request, Response.json(uuids));
         },  
-
         "/add": {
             POST: async (request) => {
                 // Adds content
@@ -238,7 +233,6 @@ Bun.serve({
                 }
             }
         },
-
         "/update": {
             POST: async (request) => {
                 // Updates content
@@ -332,7 +326,6 @@ Bun.serve({
                 }
             }
         },
-
         "/remove": {
             POST: async (request) => {
                 // Removes content
