@@ -60,8 +60,8 @@ Bun.serve({
                 end: attributes.get("end"),
                 loose: attributes.get("loose"),
                 name: attributes.get("name"),
-                page: attributes.get("page"),
                 order: attributes.get("order"),
+                page: attributes.get("page"),
                 sort: attributes.get("sort"),
                 tags: attributes.get("tags"),
                 uuid: attributes.get("uuid")
@@ -143,8 +143,8 @@ Bun.serve({
                 try {
                     // Parses form data
                     const formData = await request.formData();
-                    const json = formData.get("json") as Bun.FormDataEntryValue;
-                    const file = formData.get("file") as Bun.FormDataEntryValue;
+                    const json = formData.get("json") as Bun.FormDataEntryValue | null;
+                    const file = formData.get("file") as Bun.FormDataEntryValue | null;
                     
                     // Creates parsed
                     if(typeof json !== "string") return pass.message(request, "Invalid JSON", 400);

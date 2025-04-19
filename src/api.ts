@@ -134,7 +134,7 @@ export function search(filter: {
         parameters.push(`ContentId = ?`);
         values.push(filter.uuid);
     }
-    const join = filter.loose ? " OR " : " AND ";
+    const join = filter.loose === true ? " OR " : " AND ";
     const conditions = parameters.length === 0 ? "" : `WHERE ${parameters.join(join)}`;
 
     // Creates sort
@@ -146,8 +146,8 @@ export function search(filter: {
     }[typeof filter.sort === "undefined" ? "time" : filter.sort]} ${order}`;
 
     // Creates limit
-    const offset = count * page;
-    const limit = isFinite(count) && count > 0 && offset > 0 ?
+    const offset = Math.max(count * page, 0);
+    const limit = isFinite(count) && count > 0 ?
         `LIMIT ${Math.trunc(count)} OFFSET ${Math.trunc(offset)}` : "";
     
     // Creates query
