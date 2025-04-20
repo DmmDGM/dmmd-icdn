@@ -1,5 +1,6 @@
 // Imports
 import { Exception } from "./except";
+import * as env from "./env";
 import * as log from "./log";
 
 // Creates passers
@@ -40,6 +41,8 @@ export const error = (requestTarget: Request, error: any) => {
         except(requestTarget, error) :
         json(requestTarget, {
             code: "SERVER_ERROR",
-            message: "Internal server error"
+            message: env.debug ?
+                (error instanceof Error ? error.message : String(error)) :
+                "Internal server error."
         }, 500);
 };

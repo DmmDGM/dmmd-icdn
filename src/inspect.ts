@@ -20,19 +20,16 @@ export function checkMime(mime: string): boolean {
 }
 
 // Defines size checker function
-export async function checkSize(uuid: string, buffer: ArrayBuffer): Promise<boolean> {
+export function checkSize(
+    total: number,
+    size: number,
+    included: boolean = true
+): boolean {
     // Checks file size
-    if(buffer.byteLength > env.fileLimit) return false;
+    if(size > env.fileLimit) return false;
 
     // Checks store size
-    let included = false;
-    const total = (await nodeFile.readdir(env.filesPath))
-        .map((file) => {
-            included = included || file === uuid;
-            return Bun.file(nodePath.resolve(env.filesPath, file)).size;
-        })
-        .reduce((accumulator, current) => accumulator + current, 0);
-    if(!included && total + buffer.byteLength > env.storeLimit) return false;
+    if(total + (included ? 0 : size) > env.storeLimit) return false;
 
     // Returns true
     return true;

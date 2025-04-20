@@ -13,6 +13,7 @@ export type Content<Data extends object> = {
     file: Bun.BunFile;
     mime: string;
     name: string;
+    size: number;
     tags: string[];
     time: Date;
     uuid: string;
@@ -21,7 +22,9 @@ export type Content<Data extends object> = {
 // Definse packet type
 export type Packet<Data extends object> = {
     data: Data;
+    mime: string;
     name: string;
+    size: number;
     tags: string[];
     time: number;
     uuid: string;
@@ -31,7 +34,9 @@ export type Packet<Data extends object> = {
 export type Schema = {
     ContentId: string;
     Data: string;
+    Mime: string;
     Name: string;
+    Size: number;
     Tags: string;
     Time: number;
 };
@@ -46,18 +51,19 @@ store.run(`
     CREATE TABLE IF NOT EXISTS Contents (
         ContentId TEXT UNIQUE PRIMARY KEY,
         Data TEXT NOT NULL,
+        Mime TEXT NOT NULL,
         Name TEXT NOT NULL,
+        Size INTEGER,
         Tags TEXT NOT NULL,
         Time INTEGER
     );
 `);
 
-
 // Defines query function
 export async function query<Data extends object>(uuid: string): Promise<Content<Data> | null> {
     // Creates query
     const schema = store.query(`
-        SELECT ContentId, Data, Name, Tags, Time
+        SELECT ContentId, Data, Mime, Name, Size, Tags, Time
         FROM Contents
         WHERE ContentId = ?
         LIMIT 1;
@@ -66,14 +72,14 @@ export async function query<Data extends object>(uuid: string): Promise<Content<
 
     // Creates file
     const file = Bun.file(nodePath.resolve(env.filesPath, schema.ContentId));
-    const buffer = await file.arrayBuffer();
 
     // Returns query
     return {
-        buffer: buffer,
+        buffer: await file.arrayBuffer(),
         data: JSON.parse(schema.Data),
         file: file,
-        mime: await inspect.getMime(buffer),
+        size: schema.Size,
+        mime: schema.Mime,
         name: schema.Name,
         tags: schema.Tags.split(","),
         time: new Date(schema.Time),
@@ -86,6 +92,9 @@ export function search(filter: {
     begin?: Date,
     end?: Date,
     loose?: boolean,
+    maximum?: number,
+    mime?: string,
+    minimum?: number,
     name?: string,
     order?: "ascending" | "descending",
     sort?: "name" | "time" | "uuid",
@@ -110,6 +119,23 @@ export function search(filter: {
     else if(typeof filter.end !== "undefined") {
         predicates.push("Time <= ?");
         values.push(filter.end.getTime());
+    }
+    if(typeof filter.minimum !== "undefined" && typeof filter.maximum !== "undefined") {
+        predicates.push("Size Between ? AND ?");
+        values.push(filter.minimum);
+        values.push(filter.maximum);
+    }
+    else if(typeof filter.minimum !== "undefined") {
+        predicates.push("Size >= ?");
+        values.push(filter.minimum);
+    }
+    else if(typeof filter.maximum !== "undefined") {
+        predicates.push("Time <= ?");
+        values.push(filter.maximum);
+    }
+    if(typeof filter.mime !== "undefined") {
+        predicates.push(`Mime LIKE ? ESCAPE '\\'`);
+        values.push(`%${escape(filter.mime)}%`);
     }
     if(typeof filter.name !== "undefined") {
         predicates.push(`Name LIKE ? ESCAPE '\\'`);
@@ -181,7 +207,7 @@ export async function add<Data extends object>(source: Source<Data>): Promise<Co
     // Checks source file
     if(!inspect.checkMime(source.mime))
         throw new except.Exception(except.Codes.UNSUPPORTED_MIME);
-    if(!await inspect.checkSize(uuid, source.buffer))
+    if(!inspect.checkSize(await size(), source.size))
         throw new except.Exception(except.Codes.LARGE_SOURCE);
 
     // Creates file
@@ -190,12 +216,14 @@ export async function add<Data extends object>(source: Source<Data>): Promise<Co
     // Adds data
     await file.write(source.buffer);
     store.run(`
-        INSERT INTO Contents (ContentId, Data, Name, Tags, Time)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO Contents (ContentId, Data, Mime, Name, Size, Tags, Time)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [
         uuid,
         JSON.stringify(source.data),
+        source.mime,
         source.name,
+        source.size,
         source.tags.join(","),
         source.time.getTime()
     ]);
@@ -207,6 +235,7 @@ export async function add<Data extends object>(source: Source<Data>): Promise<Co
         file: file,
         mime: source.mime,
         name: source.name,
+        size: source.size,
         tags: source.tags,
         time: source.time,
         uuid: uuid
@@ -230,12 +259,14 @@ export async function update<Data extends object>(
         "file" in source &&
         typeof source.file !== "undefined" &&
         "mime" in source &&
-        typeof source.mime !== "undefined"
+        typeof source.mime !== "undefined" &&
+        "size" in source &&
+        typeof source.size !== "undefined"
     ) {
         // Checks source file
         if(!inspect.checkMime(source.mime))
             throw new except.Exception(except.Codes.UNSUPPORTED_MIME);
-        if(!await inspect.checkSize(uuid, source.buffer))
+        if(!inspect.checkSize(await size(), source.size, true))
             throw new except.Exception(except.Codes.LARGE_SOURCE);
 
         // Updates file
@@ -293,12 +324,36 @@ export async function remove<Data extends object>(uuid: string): Promise<Content
     return content;
 }
 
+// Defines length function
+export function length(): number {
+    // Fetches length
+    const count = (store.prepare(`
+        SELECT COUNT(ContentId) FROM Contents;
+    `).get() as { "COUNT(ContentId)": number })["COUNT(ContentId)"];
+
+    // Returns length
+    return count;
+}
+
+// Defines size function
+export async function size(): Promise<number> {
+    // Fetches size
+    const total = (await nodeFile.readdir(env.filesPath))
+        .map((file) => Bun.file(nodePath.resolve(env.filesPath, file)).size)
+        .reduce((accumulator, current) => accumulator + current, 0);
+
+    // Returns size
+    return total;
+}
+
 // Defines pack function
 export function pack<Data extends object>(content: Content<Data>): Packet<Data> {
     // Creates packet
     const packet: Packet<Data> = {
         data: content.data,
+        mime: content.mime,
         name: content.name,
+        size: content.size,
         tags: content.tags,
         time: content.time.getTime(),
         uuid: content.uuid

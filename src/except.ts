@@ -17,19 +17,19 @@ export enum Codes {
 
 // Defines exception messages enum
 export enum Messages {
-    BAD_FILE = "File is not a valid blob",
-    BAD_JSON = "JSON is structurely invalid or contains missing fields",
-    INVALID_DATA = "Invalid or missing 'data' field in json",
-    INVALID_NAME = "Invalid or missing 'name' field in json",
-    INVALID_TAGS = "Invalid or missing 'tags' field in json",
-    INVALID_TIME = "Invalid or missing 'time' field in json",
-    INVALID_TOKEN = "Invalid or missing 'token' field in json",
-    INVALID_UUID = "Invalid or missing 'uuid' field in json",
-    LARGE_SOURCE = "Source file exceeds limit",
-    MISSING_ASSET = "Asset not found",
-    MISSING_CONTENT = "Content not found",
-    UNAUTHORIZED_TOKEN = "Accesss unauthorized",
-    UNSUPPORTED_MIME = "Source file MIME is not accepted"
+    BAD_FILE = "File is not a valid blob.",
+    BAD_JSON = "JSON is structurely invalid or contains missing fields.",
+    INVALID_DATA = "Invalid or missing 'data' field in json.",
+    INVALID_NAME = "Invalid or missing 'name' field in json.",
+    INVALID_TAGS = "Invalid or missing 'tags' field in json.",
+    INVALID_TIME = "Invalid or missing 'time' field in json.",
+    INVALID_TOKEN = "Invalid or missing 'token' field in json.",
+    INVALID_UUID = "Invalid or missing 'uuid' field in json.",
+    LARGE_SOURCE = "Source file exceeds limit.",
+    MISSING_ASSET = "Asset not found.",
+    MISSING_CONTENT = "Content not found.",
+    UNAUTHORIZED_TOKEN = "Accesss unauthorized.",
+    UNSUPPORTED_MIME = "Source file MIME is not accepted."
 }
 
 // Defines exception statuses enum

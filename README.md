@@ -26,6 +26,9 @@ All project configuration should be placed inside of the `.env` file in your wor
 > All keys displayed are optional. The indicated values are the internal default values.
 
 ```env
+# Whether to enable debug mode.
+DEBUG=false
+
 # Specifies the maximum content file limit in bytes.
 FILE_LIMIT=10485760
 
@@ -47,18 +50,34 @@ TOKEN=""
 
 ## API
 
+### (GET) `/store`
+
+Returns data about the store in the following format:
+
+```ts
+type Packet = {
+    fileLimit: number;
+    length: number;
+    protected: boolean;
+    size: number;
+    storeLimit: number;
+};
+```
+
 ### (GET) `/file/<uuid>`
 
 Returns the raw file associated with the uuid. Returned MIME type will always be `image/*`, `video/*` or `text/plain`.
 
-### (GET) `/content/<uuid>`
+### (GET) `/query/<uuid>`
 
-Returns the content data associated with the uuid in the follow format:
+Returns the content data associated with the uuid in the following format:
 
 ```ts
 type Packet = {
     data: object;
+    mime: string;
     name: string;
+    size: number;
     tags: string[];
     time: number;
     uuid: string;
@@ -81,6 +100,9 @@ Below are the available parameters:
 | `?count=number` | The number of uuids returned per page. Settings the value to `0` removes the limit. Default is `25`. |
 | `?end=number` | All content must have an associated time before the specified timestamp. |
 | `?loose=boolean` | If `true`, all filters must be satisfied for the content uuid to be returned. If `false`, only at least one filter must be satisfied for the content uuid to be returned. Default is `false`. |
+| `?maximum=number` | All content size must not exceed the specified maximum. |
+| `?mime=string` | All content MIME type must contain partially or completely the specified MIME type. |
+| `?minimum=number` | All content size must not go under the specified minimum. |
 | `?name=string` | All content must contain partially or completely the specified name. |
 | `?order=ascending\|descending` | Whether the returned uuids should be sorted in ascending or descending order. Default is `descending`. |
 | `?page=number` | Page offset. Starting with `0` as the first page. Default is `0`. |
@@ -95,7 +117,9 @@ Returns all content data in the following format:
 ```ts
 type Packet = {
     data: object;
+    mime: string;
     name: string;
+    size: number;
     tags: string[];
     time: number;
     uuid: string;
@@ -132,7 +156,9 @@ The `json` form data must contain the following format:
 ```ts
 type Packet = {
     data: object;
+    mime: string;
     name: string;
+    size: number;
     tags: string[];
     token?: string;
     time: number;
@@ -146,7 +172,9 @@ Returned value will always be in the following format:
 ```ts
 type Packet = {
     data: object;
+    mime: string;
     name: string;
+    size: number;
     tags: string[];
     time: number;
     uuid: string;
@@ -176,7 +204,9 @@ Returned value will always be in the following format:
 ```ts
 type Packet = {
     data: object;
+    mime: string;
     name: string;
+    size: number;
     tags: string[];
     time: number;
     uuid: string;
@@ -200,7 +230,9 @@ Returned value will always be in the following format:
 ```ts
 type Packet = {
     data: object;
+    mime: string;
     name: string;
+    size: number;
     tags: string[];
     time: number;
     uuid: string;

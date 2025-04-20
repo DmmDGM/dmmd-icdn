@@ -39,7 +39,30 @@ Bun.serve({
             }
         },
 
-        // Handles api requests for accessing data
+        // Handles api requests for store data
+        "/store": async (request: Bun.BunRequest<"/store">) => {
+            // Returns content
+            try {
+                // Fetches store data
+                const length = cdn.length();
+                const size = await cdn.size();
+    
+                // Returns response
+                return pass.json(request, {
+                    fileLimit: env.fileLimit,
+                    length: length,
+                    protected: env.token.length > 0,
+                    size: size,
+                    storeLimit: env.storeLimit
+                });
+            }
+            catch(error) {
+                // Returns error
+                return pass.error(request, error);
+            }
+        },
+
+        // Handles api requests for accessing content
         "/file/:uuid": async (request: Bun.BunRequest<"/file/:uuid">) => {
             // Returns file
             try {
@@ -60,7 +83,7 @@ Bun.serve({
                 return pass.error(request, error);
             }
         },
-        "/content/:uuid": async (request: Bun.BunRequest<"/content/:uuid">) => {
+        "/query/:uuid": async (request: Bun.BunRequest<"/query/:uuid">) => {
             // Returns content
             try {
                 // Creates content
@@ -69,7 +92,7 @@ Bun.serve({
                     throw new except.Exception(except.Codes.MISSING_CONTENT);
     
                 // Returns response
-                return pass.response(request, Response.json(cdn.pack(content)));
+                return pass.json(request, cdn.pack(content));
             }
             catch(error) {
                 // Returns error
@@ -88,6 +111,9 @@ Bun.serve({
                     count: attributes.get("count"),
                     end: attributes.get("end"),
                     loose: attributes.get("loose"),
+                    maximum: attributes.get("maximum"),
+                    mime: attributes.get("mime"),
+                    minimum: attributes.get("minimum"),
                     name: attributes.get("name"),
                     order: attributes.get("order"),
                     page: attributes.get("page"),
@@ -103,6 +129,11 @@ Bun.serve({
                     end: parameters.end === null || isNaN(+parameters.end) ?
                         void 0 : new Date(+parameters.end),
                     loose: parameters.loose === null ? void 0 : parameters.loose === "true",
+                    maximum: parameters.maximum === null || isNaN(+parameters.maximum) ?
+                        void 0 : +parameters.maximum,
+                    mime: parameters.mime === null ? void 0 : parameters.mime,
+                    minimum: parameters.minimum === null || isNaN(+parameters.minimum) ?
+                        void 0 : +parameters.minimum,
                     name: parameters.name === null ? void 0 : parameters.name,
                     order: parameters.order === null ? void 0 : (
                         parameters.order === "ascending" ?
@@ -256,6 +287,7 @@ Bun.serve({
                         file: file as Bun.BunFile,
                         mime: await inspect.getMime(buffer),
                         name: parsed.name,
+                        size: buffer.byteLength,
                         tags: parsed.tags as string[],
                         time: new Date(parsed.time)
                     };
@@ -323,6 +355,7 @@ Bun.serve({
                         source.buffer = buffer;
                         source.file = file as Bun.BunFile;
                         source.mime = await inspect.getMime(buffer);
+                        source.size = buffer.byteLength;
                     }
 
                     // Parses fields

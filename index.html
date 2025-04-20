@@ -47,6 +47,12 @@
                 line-height: 14px;
             }
 
+            /* Body */
+            body {
+                display: flex;
+                flex-direction: column;
+            }
+
             /* Navigation */
             nav {
                 /* Applies background */
@@ -181,14 +187,29 @@
             /* Gallery */
             #gallery {
                 display: flex;
+                padding: 0px 10px 10px 10px;
                 flex-wrap: wrap;
                 gap: 10px 10px;
+                flex: 1;
+                overflow-y: scroll;
+            }
+            
+            #gallery .box {
+                padding: 10px;
+                border: none;
+                outline: none;
+                border-radius: 5px;
+                background-color: var(--sd-mono-200);
+                opacity: 75%;
+                transition: opacity 0.2s ease;
             }
 
-            /* Content */
-            .content {
+            #gallery .box:hover {
+                opacity: 100%;
+            }
+
+            #gallery .item {
                 height: 250px;
-                background-color: var(--sd-mono-200);
             }
         </style>
     </head>
@@ -213,6 +234,7 @@
             <div id="controls">
                 <button id="controls-upload">Upload</button>
                 <button id="controls-refresh">Refresh</button>
+                <button id="controls-details">Details</button>
             </div>
         </nav>
 
@@ -232,13 +254,21 @@
                     return order.ascending.classList.contains("active") ? "asc" : "desc";
                 },
             };
-            order.ascending.addEventListener("click", () => {
+            order.ascending.addEventListener("click", async () => {
+                // Updates order
                 order.ascending.classList.add("active");
                 order.descending.classList.remove("active");
+                
+                // Refreshes
+                await refresh();
             });
-            order.descending.addEventListener("click", () => {
+            order.descending.addEventListener("click", async () => {
+                // Updates order
                 order.ascending.classList.remove("active");
                 order.descending.classList.add("active");
+                
+                // Refreshes
+                await refresh();
             });
 
             // Defines sort
@@ -251,41 +281,68 @@
                         sort.time.classList.contains("active") ? "time" : "uuid";
                 }
             };
-            sort.name.addEventListener("click", () => {
+            sort.name.addEventListener("click", async () => {
+                // Updates sort
                 sort.name.classList.add("active");
                 sort.time.classList.remove("active");
                 sort.uuid.classList.remove("active");
+
+                // Refreshes
+                await refresh();
             });
-            sort.time.addEventListener("click", () => {
+            sort.time.addEventListener("click", async () => {
+                // Updates sort
                 sort.name.classList.remove("active");
                 sort.time.classList.add("active");
                 sort.uuid.classList.remove("active");
+
+                // Refreshes
+                await refresh();
             });
-            sort.uuid.addEventListener("click", () => {
+            sort.uuid.addEventListener("click", async () => {
+                // Updates sort
                 sort.name.classList.remove("active");
                 sort.time.classList.remove("active");
                 sort.uuid.classList.add("active");
+
+                // Refreshes
+                await refresh();
             });
 
             // Defines loaders
-            async function load(uuid) {
-                const content = await fetch(`/file/${uuid}`, {
-                    method: "HEAD"
-                });
-                const mime = content.headers.get("Content-Type");
-                if(mime === "text/plain") throw new Error("MIME not accepted");
+            async function create(uuid) {
+                // Fetches mime
+                const uri = `/file/${uuid}`;
+                const mime = (await fetch(uri, { method: "HEAD" })).headers.get("Content-Type");
+                if(mime === null || mime === "text/plain") throw new Error("Invalid MIME");
+
+                // Creates element
                 const tag = mime.startsWith("image/") ? "img" : "video";
-                const container = document.createElement(tag);
-                container.src = `/file/${uuid}`;
-                container.classList.add("content");
-                // container.loading = "lazy";
-                gallery.appendChild(container);
+                const item = document.createElement(tag);
+                item.src = uri;
+                item.classList.add("item");
+
+                // Creates box
+                const box = document.createElement("button");
+                box.classList.add("box");
+                box.appendChild(item);
+                
+                // Returns box
+                return box;
+            }
+
+            async function refresh() {
+
             }
 
             async function loadAll() {
                 const uuids = await (await fetch("/list")).json();
                 for(let i = 0; i < uuids.length; i++) {
-                    load(uuids[i]);
+                    gallery.appendChild(await create(uuids[i]));
+                    gallery.appendChild(await create(uuids[i]));
+                    gallery.appendChild(await create(uuids[i]));
+                    gallery.appendChild(await create(uuids[i]));
+                    gallery.appendChild(await create(uuids[i]));
                 }
             }
 
