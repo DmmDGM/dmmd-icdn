@@ -269,16 +269,16 @@
 
             // Defines loaders
             async function load(uuid) {
-                const content = await fetch(`/content/${uuid}`, {
+                const content = await fetch(`/file/${uuid}`, {
                     method: "HEAD"
                 });
                 const mime = content.headers.get("Content-Type");
                 if(mime === "text/plain") throw new Error("MIME not accepted");
                 const tag = mime.startsWith("image/") ? "img" : "video";
                 const container = document.createElement(tag);
-                container.src = `/content/${uuid}`;
+                container.src = `/file/${uuid}`;
                 container.classList.add("content");
-                container.loading = "lazy";
+                // container.loading = "lazy";
                 gallery.appendChild(container);
             }
 
