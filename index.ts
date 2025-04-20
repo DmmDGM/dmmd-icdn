@@ -30,20 +30,19 @@ Bun.serve({
         // Handles api requests for accessing data
         "/content/:uuid": async (request: Bun.BunRequest<"/content/:uuid">) => {
             // Creates content
-            const content = api.query(request.params.uuid);
+            const content = await api.query(request.params.uuid);
             if(content === null) return pass.message(request, "Content not found", 404);
 
             // Returns response
-            const type = await fileTypeFromBuffer(await content.file.arrayBuffer());
             return pass.response(request, new Response(content.file, {
                 headers: {
-                    "Content-Type": typeof type === "undefined" ? "text/plain" : type.mime
+                    "Content-Type": content.mime
                 }
             }));
         },
         "/data/:uuid": async (request: Bun.BunRequest<"/data/:uuid">) => {
             // Creates content
-            const content = api.query(request.params.uuid);
+            const content = await api.query(request.params.uuid);
             if(content === null) return pass.message(request, "Not found", 404);
 
             // Returns response
@@ -77,15 +76,13 @@ Bun.serve({
                 name: parameters.name === null ? void 0 : parameters.name,
                 order: parameters.order === null ? void 0 : (
                     parameters.order === "ascending" ?
-                        "ascending" :
-                        "descending"
+                        "ascending" : "descending"
                 ),
                 sort: parameters.sort === null ? void 0 : (
                     parameters.sort === "name" ||
                     parameters.sort === "time" ||
                     parameters.sort === "uuid" ?
-                        parameters.sort :
-                        void 0
+                        parameters.sort : void 0
                 ),
                 tags: parameters.tags === null ? void 0 : parameters.tags.split(","),
                 uuid: parameters.uuid === null ? void 0 : parameters.uuid
@@ -114,7 +111,9 @@ Bun.serve({
             // Creates search
             const count = parameters.count === null ? void 0 : +parameters.count;
             const page = parameters.page === null ? void 0 : +parameters.page;
-            const packets = api.list(count, page).map((uuid) => api.pack(api.query(uuid)!));
+            const packets = await Promise.all(
+                api.list(count, page).map(async (uuid) => api.pack((await api.query(uuid))!))
+            );
 
             // Returns response
             return pass.response(request, Response.json(packets));
@@ -147,8 +146,7 @@ Bun.serve({
                     const file = formData.get("file") as Bun.FormDataEntryValue | null;
                     
                     // Creates parsed
-                    if(typeof json !== "string") return pass.message(request, "Invalid JSON", 400);
-                    const parsed = JSON.parse(json) as unknown;
+                    const parsed = (typeof json === "string" ? JSON.parse(json) : {}) as unknown;
                     if(
                         typeof parsed !== "object" ||
                         parsed === null
@@ -170,7 +168,8 @@ Bun.serve({
                     // Parses json
                     if(
                         !("data" in parsed) ||
-                        typeof parsed.data !== "object" || parsed.data === null
+                        typeof parsed.data !== "object" ||
+                        parsed.data === null
                     ) return pass.message(request, "Invalid or missing 'data' field in json", 400);
                     if(
                         !("name" in parsed) ||
@@ -190,9 +189,12 @@ Bun.serve({
                     if(!(file instanceof Blob)) return pass.message(request, "Invalid file", 400);
 
                     // Creates source
+                    const buffer = await file.arrayBuffer();
                     const source: api.Source<object> = {
+                        buffer: buffer,
                         data: parsed.data,
                         file: file as Bun.BunFile,
+                        mime: await api.getMime(buffer),
                         name: parsed.name,
                         tags: parsed.tags as string[],
                         time: new Date(parsed.time)
@@ -208,7 +210,7 @@ Bun.serve({
                     return pass.message(
                         request,
                         error instanceof Error ?
-                        error.message : String(error),
+                            error.message : String(error),
                         400
                     );
                 }
@@ -253,7 +255,7 @@ Bun.serve({
                     ) return pass.message(request, "Invalid or missing 'uuid' field in json", 400);
                     const uuid = parsed.uuid;
 
-                    // Parses parsed
+                    // Parses fields
                     if("data" in parsed) {
                         if(
                             typeof parsed.data !== "object" ||
@@ -284,7 +286,10 @@ Bun.serve({
                     // Parses file
                     if(file !== null) {
                         if(!(file instanceof Blob)) return pass.message(request, "Invalid file", 400);
+                        const buffer = await file.arrayBuffer();
+                        source.buffer = buffer;
                         source.file = file as Bun.BunFile;
+                        source.mime = await api.getMime(buffer);
                     }
 
                     // Updates source

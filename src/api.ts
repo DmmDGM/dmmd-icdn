@@ -7,8 +7,10 @@ import * as env from "./env";
 
 // Defines content type
 export type Content<Data extends object> = {
+    buffer: ArrayBuffer;
     data: Data;
     file: Bun.BunFile;
+    mime: string;
     name: string;
     tags: string[];
     time: Date;
@@ -34,13 +36,7 @@ export type Schema = {
 };
 
 // Defines source type
-export type Source<Data extends object> = {
-    data: Data;
-    file: Bun.BunFile;
-    name: string;
-    tags: string[];
-    time: Date;
-};
+export type Source<Data extends object> = Omit<Content<Data>, "uuid">;
 
 // Creates store
 export const store = bunSqlite.open(env.storePath);
@@ -54,8 +50,42 @@ store.run(`
     );
 `);
 
+// Definse mime fetcher function
+export async function getMime(buffer: ArrayBuffer): Promise<string> {
+    // Checks type
+    const type = await fileTypeFromBuffer(buffer);
+    
+    // Returns mime
+    return typeof type === "undefined" || !checkMime(type.mime) ? "text/plain" : type.mime;
+}
+
+// Defines mime checker function
+export function checkMime(mime: string): boolean {
+    // Checks mime
+    return mime.startsWith("image/") || mime.startsWith("video/");
+}
+
+// Defines size checker function
+export async function checkSize(uuid: string, buffer: ArrayBuffer): Promise<boolean> {
+    // Checks file size
+    if(buffer.byteLength > env.fileLimit) return false;
+
+    // Checks store size
+    let included = false;
+    const total = (await nodeFile.readdir(env.contentsPath))
+        .map((file) => {
+            included = included || file === uuid;
+            return Bun.file(nodePath.resolve(env.contentsPath, file)).size;
+        })
+        .reduce((accumulator, current) => accumulator + current, 0);
+    if(!included && total + buffer.byteLength > env.storeLimit) return false;
+
+    // Returns true
+    return true;
+}
+
 // Defines query function
-export function query<Data extends object>(uuid: string): Content<Data> | null {
+export async function query<Data extends object>(uuid: string): Promise<Content<Data> | null> {
     // Creates query
     const schema = store.query(`
         SELECT ContentId, Data, Name, Tags, Time
@@ -63,29 +93,23 @@ export function query<Data extends object>(uuid: string): Content<Data> | null {
         WHERE ContentId = ?
         LIMIT 1;
     `).get(uuid) as Schema | null;
+    if(schema === null) return null;
+
+    // Creates file
+    const file = Bun.file(nodePath.resolve(env.contentsPath, schema.ContentId));
+    const buffer = await file.arrayBuffer();
 
     // Returns query
-    if(schema === null) return null;
     return {
+        buffer: buffer,
         data: JSON.parse(schema.Data),
-        file: Bun.file(nodePath.resolve(env.contentsPath, schema.ContentId)),
+        file: file,
+        mime: await getMime(buffer),
         name: schema.Name,
         tags: schema.Tags.split(","),
         time: new Date(schema.Time),
         uuid: schema.ContentId
     };
-}
-
-// Defines all function
-export function all(): Content<object>[] {
-    // Creates query
-    const schemas = store.query(`
-        SELECT ContentId
-        FROM Contents
-    `).all() as Schema[];
-
-    // Returns query
-    return schemas.map((schema) => query(schema.ContentId)!);
 }
 
 // Defines search function
@@ -180,33 +204,29 @@ export function list(count: number = Infinity, page: number = 0): string[] {
 
 // Defines add function
 export async function add<Data extends object>(source: Source<Data>): Promise<Content<Data>> {
-    // Checks source size
-    if(source.file.size > env.fileLimit) throw new Error("Source file too large");
-    const total = (await nodeFile.readdir(env.contentsPath))
-        .map((file) => Bun.file(nodePath.resolve(env.contentsPath, file)).size)
-        .reduce((accumulator, current) => accumulator + current, 0);
-    if(total + source.file.size > env.storeLimit) throw new Error("Store limit exceeded");
-
-    // Checks source type
-    const type = await fileTypeFromBuffer(await source.file.arrayBuffer());
-    if(
-        typeof type === "undefined" ||
-        (!source.file.type.startsWith("image/") && !source.file.type.startsWith("video/"))
-    ) throw new Error("Source file MIME type not accepted");
-
-    // Creates content
+    // Creates uuid
     const uuid = Bun.randomUUIDv7();
+    
+    // Checks source file
+    if(!checkMime(source.mime))
+        throw new Error("Source file MIME type not accepted");
+    if(!await checkSize(uuid, source.buffer))
+        throw new Error("Source file size exceeds limit");
+
+    // Checks content
     const content: Content<Data> = {
+        buffer: source.buffer,
         data: source.data,
         file: Bun.file(nodePath.resolve(env.contentsPath, uuid)),
+        mime: source.mime,
         name: source.name,
         tags: source.tags,
         time: source.time,
         uuid: uuid
     };
-
+    
     // Adds data
-    await content.file.write(await source.file.bytes());
+    await content.file.write(content.buffer);
     store.run(`
         INSERT INTO Contents (ContentId, Data, Name, Tags, Time)
         VALUES (?, ?, ?, ?, ?)
@@ -231,23 +251,22 @@ export async function update<Data extends object>(
     if(!query<Data>(uuid)) throw new Error("Content not found");
 
     // Updates file
-    if("file" in source && typeof source.file !== "undefined") {
-        // Checks source size
-        if(source.file.size > env.fileLimit) throw new Error("Source file too large");
-        const total = (await nodeFile.readdir(env.contentsPath))
-            .map((file) => Bun.file(nodePath.resolve(env.contentsPath, file)).size)
-            .reduce((accumulator, current) => accumulator + current, 0);
-        if(total + source.file.size > env.storeLimit) throw new Error("Store limit exceeded");
-
-        // Checks source type
-        const type = await fileTypeFromBuffer(await source.file.arrayBuffer());
-        if(
-            typeof type === undefined ||
-            (!source.file.type.startsWith("image/") && !source.file.type.startsWith("video/"))
-        ) throw new Error("Source file MIME type not accepted");
+    if(
+        "buffer" in source &&
+        typeof source.buffer !== "undefined" &&
+        "file" in source &&
+        typeof source.file !== "undefined" &&
+        "mime" in source &&
+        typeof source.mime !== "undefined"
+    ) {
+        // Checks source file
+        if(!await checkMime(source.mime))
+            throw new Error("Source file MIME type not accepted");
+        if(!await checkSize(uuid, source.buffer))
+            throw new Error("Source file size exceeds limit");
 
         // Updates file
-        await source.file.write(await source.file.bytes());
+        await source.file.write(await source.file.arrayBuffer());
     }
     
     // Parses fields
@@ -279,14 +298,15 @@ export async function update<Data extends object>(
     `, values);
 
     // Returns content
-    return query<Data>(uuid)!;
+    const content = (await query<Data>(uuid))!;
+    return content;
 }
 
 // Defines remove function
-export async function remove<Data extends object>(uuid: string): Promise<Content<Data> | null> {
+export async function remove<Data extends object>(uuid: string): Promise<Content<Data>> {
     // Checks content
-    const content = query<Data>(uuid);
-    if(content === null) return null;
+    const content = (await query<Data>(uuid))!;
+    if(content === null) throw new Error("Content not found");
 
     // Removes content
     await content.file.delete();
