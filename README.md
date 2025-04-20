@@ -30,7 +30,7 @@ All project configuration should be placed inside of the `.env` file in your wor
 FILE_LIMIT=10485760
 
 # Specifies the directory where all content files should be placed.
-FILES_PATH="contents/"
+FILES_PATH="files/"
 
 # Specifies the port the localhost server will be hosted on.
 PORT=1364
