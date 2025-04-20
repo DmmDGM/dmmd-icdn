@@ -183,7 +183,7 @@ export async function add<Data extends object>(source: Source<Data>): Promise<Co
     // Checks source size
     if(source.file.size > env.fileLimit) throw new Error("Source file too large");
     const total = (await nodeFile.readdir(env.contentsPath))
-        .map(file => Bun.file(nodePath.resolve(env.contentsPath, file)).size)
+        .map((file) => Bun.file(nodePath.resolve(env.contentsPath, file)).size)
         .reduce((accumulator, current) => accumulator + current, 0);
     if(total + source.file.size > env.storeLimit) throw new Error("Store limit exceeded");
 
@@ -229,6 +229,26 @@ export async function update<Data extends object>(
 ): Promise<Content<Data>> {
     // Checks uuid
     if(!query<Data>(uuid)) throw new Error("Content not found");
+
+    // Updates file
+    if("file" in source && typeof source.file !== "undefined") {
+        // Checks source size
+        if(source.file.size > env.fileLimit) throw new Error("Source file too large");
+        const total = (await nodeFile.readdir(env.contentsPath))
+            .map((file) => Bun.file(nodePath.resolve(env.contentsPath, file)).size)
+            .reduce((accumulator, current) => accumulator + current, 0);
+        if(total + source.file.size > env.storeLimit) throw new Error("Store limit exceeded");
+
+        // Checks source type
+        const type = await fileTypeFromBuffer(await source.file.arrayBuffer());
+        if(
+            typeof type === undefined ||
+            (!source.file.type.startsWith("image/") && !source.file.type.startsWith("video/"))
+        ) throw new Error("Source file MIME type not accepted");
+
+        // Updates file
+        await source.file.write(await source.file.bytes());
+    }
     
     // Parses fields
     const keys: string[] = [];
@@ -257,26 +277,6 @@ export async function update<Data extends object>(
         SET ${keys.map((key) => `${key} = ?`).join(", ")}
         WHERE ContentId = ?
     `, values);
-
-    // Updates file
-    if("file" in source && typeof source.file !== "undefined") {
-        // Checks source size
-        if(source.file.size > env.fileLimit) throw new Error("Source file too large");
-        const total = (await nodeFile.readdir(env.contentsPath))
-            .map(file => Bun.file(nodePath.resolve(env.contentsPath, file)).size)
-            .reduce((accumulator, current) => accumulator + current, 0);
-        if(total + source.file.size > env.storeLimit) throw new Error("Store limit exceeded");
-
-        // Checks source type
-        const type = await fileTypeFromBuffer(await source.file.arrayBuffer());
-        if(
-            typeof type === undefined ||
-            (!source.file.type.startsWith("image/") && !source.file.type.startsWith("video/"))
-        ) throw new Error("Source file MIME type not accepted");
-
-        // Updates file
-        await source.file.write(await source.file.bytes());
-    }
 
     // Returns content
     return query<Data>(uuid)!;

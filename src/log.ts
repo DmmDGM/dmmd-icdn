@@ -43,7 +43,10 @@ export function info(content: string): void {
 export function route(request: Request, response: Response): void {
     // Constructs message
     const banner = `[${now()}] ROUTE`;
-    const content = `Accessed ${chalk.cyan(request.url)} with status ${chalk.cyan(response.status)}`;
+    const ip = chalk.cyan(request.headers.get("CF-Connecting-IP") ?? "Unknown");
+    const url = chalk.cyan(request.url);
+    const code = chalk.cyan(response.status);
+    const content = `${ip} accessed ${url} with status ${code}`;
     const status = response.ok ? chalk.green("(OK)") : chalk.red("(FAILED)");
     const message = chalk.yellowBright(`${banner} | ${content} ${status}`);
 

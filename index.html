@@ -8,18 +8,269 @@
         <title>Gallery</title>
         <link rel="stylesheet" href="./assets/soda.css">
         <style>
+            /* Defines fonts */
+            @font-face {
+                /* Defines font */
+                font-family: "Oxygen";
+                font-weight: normal;
+                src: url("./assets/oxygen.woff2") format("woff2");
+            }
+
+            @font-face {
+                /* Defines font */
+                font-family: "Oxygen";
+                font-weight: bold;
+                src: url("./assets/oxygen-bold.woff2") format("woff2");
+            }
+
+            /* Resets body */
             html, body {
+                /* Applies background */
+                background-color: var(--sd-mono-50);
+                
+                /* Fixes size */
                 height: 100vh;
                 width: 100vw;
-                background-color: var(--sd-mono-50);
-                padding: 0px;
+
+                /* Fixes spacing */
                 margin: 0px;
+                padding: 0px;
             }
+
+            * {
+                /* Applies color */
+                color: var(--sd-mono-1000);
+                
+                /* Applies font */
+                font-family: "Oxygen";
+                font-size: 14px;
+                line-height: 14px;
+            }
+
+            /* Navigation */
+            nav {
+                /* Applies background */
+                background-color: var(--sd-mono-200);
+                
+                /* Fixes size */
+                height: 30px;
+
+                /* Fixes spacing */
+                padding: 10px 15px;
+
+                /* Displays flex */
+                display: flex;
+                gap: 0px 15px;
+            }
+
+            nav button, nav input {
+                /* Applies background */
+                background-color: var(--sd-mono-400);
+
+                /* Removes borders */
+                border: none;
+                outline: none;
+
+                /* Creates animation */
+                opacity: 75%;
+                transition: opacity 0.2s ease;
+            }
+
+            nav button:hover, nav input:hover {
+                /* Applies animation */
+                opacity: 100%;
+            }
+
+            nav button {
+                /* Fixes size */
+                height: 30px;
+
+                /* Fixes spacing */
+                padding: 5px 10px;
+
+                /* Displays flex */
+                align-items: center;
+                display: flex;
+                justify-content: center;
+            }
+
+            nav button:first-child {
+                /* Fixes spacing */
+                padding: 5px 10px 5px 15px;
+
+                /* Rounds borders */
+                border-radius: 15px 0px 0px 15px;
+            }
+
+            nav button:last-child {
+                /* Fixes spacing */
+                padding: 5px 15px 5px 10px;
+                
+                /* Rounds borders */
+                border-radius: 0px 15px 15px 0px;
+            }
+
+            nav button:only-child {
+                /* Fixes spacing */
+                padding: 5px 15px 5px 15px;
+
+                /* Rounds borders */
+                border-radius: 15px;
+            }
+
+            nav button.active {
+                /* Applies background */
+                background-color: var(--sd-mono-600);
+            }
+
+            nav input {
+                /* Fixes size */
+                height: 20px;
+                
+                /* Fixes spacing */
+                padding: 5px 20px;
+
+                /* Displays flex */
+                align-items: center;
+                display: flex;
+
+                /* Rounds borders */
+                border-radius: 15px;
+            }
+
+            /* Home */
+            #home {
+                /* Displays flex */
+                align-items: center;
+                display: flex;
+                justify-content: center;
+            }
+
+            #home span {
+                /* Applies font */
+                font-size: 16px;
+                font-weight: bold;
+                line-height: 16px;
+            }
+
+            /* Order */
+            #order {
+                /* Displays flex */
+                display: flex;
+            }
+
+            /* Sort */
+            #sort {
+                /* Displays flex */
+                display: flex;
+            }
+
+            /* Search */
+            #search {
+                /* Displays flex */
+                flex: 1;
+            }
+
+            /* Controls */
+            #controls {
+                /* Displays flex */
+                display: flex;
+            }
+
+
         </style>
     </head>
 
     <!-- Body -->
     <body>
-        
+        <!-- Navigation -->
+        <nav>
+            <div id="home">
+                <span>DmmD ICDN</span>
+            </div>
+            <div id="order">
+                <button id="order-asc">Ascending</button>
+                <button class="active" id="order-desc">Descending</button>
+            </div>
+            <div id="sort">
+                <button id="sort-name">Name</button>
+                <button class="active" id="sort-time">Time</button>
+                <button id="sort-uuid">UUID</button>
+            </div>
+            <input id="search" placeholder="Search">
+            <div id="controls">
+                <button id="controls-upload">Upload</button>
+                <button id="controls-refresh">Refresh</button>
+            </div>
+        </nav>
+
+        <!-- Gallery -->
+        <div id="gallery"></div>
+
+        <!-- Script -->
+        <script>
+            // Defines gallery
+            const gallery = document.getElementById("gallery");
+
+            // Defines order
+            const order = {
+                ascending: document.getElementById("order-asc"),
+                descending: document.getElementById("order-desc"),
+                value: () => {
+                    return order.ascending.classList.contains("active") ? "asc" : "desc";
+                },
+            };
+            order.ascending.addEventListener("click", () => {
+                order.ascending.classList.add("active");
+                order.descending.classList.remove("active");
+            });
+            order.descending.addEventListener("click", () => {
+                order.ascending.classList.remove("active");
+                order.descending.classList.add("active");
+            });
+
+            // Defines sort
+            const sort = {
+                name: document.getElementById("sort-name"),
+                time: document.getElementById("sort-time"),
+                uuid: document.getElementById("sort-uuid"),
+                value: () => {
+                    return sort.name.classList.contains("active") ? "name" :
+                        sort.time.classList.contains("active") ? "time" : "uuid";
+                }
+            };
+            sort.name.addEventListener("click", () => {
+                sort.name.classList.add("active");
+                sort.time.classList.remove("active");
+                sort.uuid.classList.remove("active");
+            });
+            sort.time.addEventListener("click", () => {
+                sort.name.classList.remove("active");
+                sort.time.classList.add("active");
+                sort.uuid.classList.remove("active");
+            });
+            sort.uuid.addEventListener("click", () => {
+                sort.name.classList.remove("active");
+                sort.time.classList.remove("active");
+                sort.uuid.classList.add("active");
+            });
+
+            
+
+            async function loadAll() {
+                const uuids = await (await fetch("/list")).json();
+                for(let i = 0; i < uuids.length; i++) {
+                    const content = await fetch(`/content/${uuids[i]}`, {
+                        method: "HEAD"
+                    });
+                    const mime = content.headers.get("Content-Type");
+                    const container = document.createElement(mime.startsWith("image/") ? "img" : "video");
+                    container.src = `/content/${uuids[i]}`;
+                    gallery.appendChild(container);
+                }
+            }
+
+            loadAll();
+        </script>
     </body>
 </html>
