@@ -3,8 +3,8 @@ declare global {
     // Declares environment variables
     namespace NodeJS {
         interface ProcessEnv {
-            CONTENTS_PATH?: string;
             FILE_LIMIT?: string;
+            FILES_PATH?: string;
             PORT?: string;
             STORE_LIMIT?: string;
             STORE_PATH?: string;

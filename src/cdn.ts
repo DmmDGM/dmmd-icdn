@@ -2,8 +2,9 @@
 import bunSqlite from "bun:sqlite";
 import nodeFile from "node:fs/promises";
 import nodePath from "node:path";
-import { fileTypeFromBuffer } from "file-type";
 import * as env from "./env";
+import * as except from "./except";
+import * as inspect from "./inspect";
 
 // Defines content type
 export type Content<Data extends object> = {
@@ -40,6 +41,7 @@ export type Source<Data extends object> = Omit<Content<Data>, "uuid">;
 
 // Creates store
 export const store = bunSqlite.open(env.storePath);
+if(!await nodeFile.exists(env.filesPath)) await nodeFile.mkdir(env.filesPath);
 store.run(`
     CREATE TABLE IF NOT EXISTS Contents (
         ContentId TEXT UNIQUE PRIMARY KEY,
@@ -50,39 +52,6 @@ store.run(`
     );
 `);
 
-// Definse mime fetcher function
-export async function getMime(buffer: ArrayBuffer): Promise<string> {
-    // Checks type
-    const type = await fileTypeFromBuffer(buffer);
-    
-    // Returns mime
-    return typeof type === "undefined" || !checkMime(type.mime) ? "text/plain" : type.mime;
-}
-
-// Defines mime checker function
-export function checkMime(mime: string): boolean {
-    // Checks mime
-    return mime.startsWith("image/") || mime.startsWith("video/");
-}
-
-// Defines size checker function
-export async function checkSize(uuid: string, buffer: ArrayBuffer): Promise<boolean> {
-    // Checks file size
-    if(buffer.byteLength > env.fileLimit) return false;
-
-    // Checks store size
-    let included = false;
-    const total = (await nodeFile.readdir(env.contentsPath))
-        .map((file) => {
-            included = included || file === uuid;
-            return Bun.file(nodePath.resolve(env.contentsPath, file)).size;
-        })
-        .reduce((accumulator, current) => accumulator + current, 0);
-    if(!included && total + buffer.byteLength > env.storeLimit) return false;
-
-    // Returns true
-    return true;
-}
 
 // Defines query function
 export async function query<Data extends object>(uuid: string): Promise<Content<Data> | null> {
@@ -96,7 +65,7 @@ export async function query<Data extends object>(uuid: string): Promise<Content<
     if(schema === null) return null;
 
     // Creates file
-    const file = Bun.file(nodePath.resolve(env.contentsPath, schema.ContentId));
+    const file = Bun.file(nodePath.resolve(env.filesPath, schema.ContentId));
     const buffer = await file.arrayBuffer();
 
     // Returns query
@@ -104,7 +73,7 @@ export async function query<Data extends object>(uuid: string): Promise<Content<
         buffer: buffer,
         data: JSON.parse(schema.Data),
         file: file,
-        mime: await getMime(buffer),
+        mime: await inspect.getMime(buffer),
         name: schema.Name,
         tags: schema.Tags.split(","),
         time: new Date(schema.Time),
@@ -127,39 +96,39 @@ export function search(filter: {
     const escape = (string: string) => string.replace(/[\\%_]/g, "\\$0");
 
     // Creates conditions
+    let predicates: string[] = [];
     let values: (string | number)[] = [];
-    let parameters: string[] = [];
     if(typeof filter.begin !== "undefined" && typeof filter.end !== "undefined") {
-        parameters.push("Time Between ? AND ?");
+        predicates.push("Time Between ? AND ?");
         values.push(filter.begin.getTime());
         values.push(filter.end.getTime());
     }
     else if(typeof filter.begin !== "undefined") {
-        parameters.push("Time >= ?");
+        predicates.push("Time >= ?");
         values.push(filter.begin.getTime());
     }
     else if(typeof filter.end !== "undefined") {
-        parameters.push("Time <= ?");
+        predicates.push("Time <= ?");
         values.push(filter.end.getTime());
     }
     if(typeof filter.name !== "undefined") {
-        parameters.push(`Name LIKE ? ESCAPE '\\'`);
+        predicates.push(`Name LIKE ? ESCAPE '\\'`);
         values.push(`%${escape(filter.name)}%`);
     }
     if(typeof filter.tags !== "undefined") {
-        parameters = parameters.concat(new Array(filter.tags.length).fill(
+        predicates = predicates.concat(new Array(filter.tags.length).fill(
             "',' || Tags || ',' LIKE ? ESCAPE '\\'"
         ));
         values = values.concat(filter.tags.map((tag) => 
-            `%,${escape(tag.replaceAll(/,/g, ""))},%`
+            `%,${escape(tag)},%`
         ));
     }
     if(typeof filter.uuid !== "undefined") {
-        parameters.push(`ContentId = ?`);
+        predicates.push(`ContentId = ?`);
         values.push(filter.uuid);
     }
     const join = filter.loose === true ? " OR " : " AND ";
-    const conditions = parameters.length === 0 ? "" : `WHERE ${parameters.join(join)}`;
+    const conditions = predicates.length === 0 ? "" : `WHERE ${predicates.join(join)}`;
 
     // Creates sort
     const order = typeof filter.order === "undefined" || filter.order === "descending" ? "DESC" : "ASC";
@@ -178,7 +147,9 @@ export function search(filter: {
     const schemas = store.query(`
         SELECT ContentId
         FROM Contents
-        ${conditions} ${sort} ${limit};
+        ${conditions}
+        ${sort}
+        ${limit};
     `).all(...values) as Schema[];
 
     // Returns query
@@ -208,37 +179,38 @@ export async function add<Data extends object>(source: Source<Data>): Promise<Co
     const uuid = Bun.randomUUIDv7();
     
     // Checks source file
-    if(!checkMime(source.mime))
-        throw new Error("Source file MIME type not accepted");
-    if(!await checkSize(uuid, source.buffer))
-        throw new Error("Source file size exceeds limit");
+    if(!inspect.checkMime(source.mime))
+        throw new except.Exception(except.Codes.UNSUPPORTED_MIME);
+    if(!await inspect.checkSize(uuid, source.buffer))
+        throw new except.Exception(except.Codes.LARGE_SOURCE);
 
-    // Checks content
+    // Creates file
+    const file = Bun.file(nodePath.resolve(env.filesPath, uuid));
+    
+    // Adds data
+    await file.write(source.buffer);
+    store.run(`
+        INSERT INTO Contents (ContentId, Data, Name, Tags, Time)
+        VALUES (?, ?, ?, ?, ?)
+    `, [
+        uuid,
+        JSON.stringify(source.data),
+        source.name,
+        source.tags.join(","),
+        source.time.getTime()
+    ]);
+
+    // Returns content
     const content: Content<Data> = {
         buffer: source.buffer,
         data: source.data,
-        file: Bun.file(nodePath.resolve(env.contentsPath, uuid)),
+        file: file,
         mime: source.mime,
         name: source.name,
         tags: source.tags,
         time: source.time,
         uuid: uuid
     };
-    
-    // Adds data
-    await content.file.write(content.buffer);
-    store.run(`
-        INSERT INTO Contents (ContentId, Data, Name, Tags, Time)
-        VALUES (?, ?, ?, ?, ?)
-    `, [
-        content.uuid,
-        JSON.stringify(content.data),
-        content.name,
-        content.tags.join(","),
-        content.time.getTime()
-    ]);
-
-    // Returns content
     return content;
 }
 
@@ -248,7 +220,8 @@ export async function update<Data extends object>(
     source: Partial<Source<Data>>
 ): Promise<Content<Data>> {
     // Checks uuid
-    if(!query<Data>(uuid)) throw new Error("Content not found");
+    if(!query<Data>(uuid))
+        throw new except.Exception(except.Codes.MISSING_CONTENT);
 
     // Updates file
     if(
@@ -260,10 +233,10 @@ export async function update<Data extends object>(
         typeof source.mime !== "undefined"
     ) {
         // Checks source file
-        if(!await checkMime(source.mime))
-            throw new Error("Source file MIME type not accepted");
-        if(!await checkSize(uuid, source.buffer))
-            throw new Error("Source file size exceeds limit");
+        if(!inspect.checkMime(source.mime))
+            throw new except.Exception(except.Codes.UNSUPPORTED_MIME);
+        if(!await inspect.checkSize(uuid, source.buffer))
+            throw new except.Exception(except.Codes.LARGE_SOURCE);
 
         // Updates file
         await source.file.write(await source.file.arrayBuffer());
@@ -294,7 +267,7 @@ export async function update<Data extends object>(
     store.run(`
         UPDATE Contents
         SET ${keys.map((key) => `${key} = ?`).join(", ")}
-        WHERE ContentId = ?
+        WHERE ContentId = ?;
     `, values);
 
     // Returns content
@@ -306,13 +279,14 @@ export async function update<Data extends object>(
 export async function remove<Data extends object>(uuid: string): Promise<Content<Data>> {
     // Checks content
     const content = (await query<Data>(uuid))!;
-    if(content === null) throw new Error("Content not found");
+    if(content === null)
+        throw new except.Exception(except.Codes.MISSING_CONTENT);
 
     // Removes content
     await content.file.delete();
     store.run(`
         DELETE FROM Contents
-        WHERE ContentId = ?
+        WHERE ContentId = ?;
     `, [ content.uuid ]);
 
     // Returns content

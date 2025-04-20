@@ -26,11 +26,11 @@ All project configuration should be placed inside of the `.env` file in your wor
 > All keys displayed are optional. The indicated values are the internal default values.
 
 ```env
-# Specifies the directory where all contents should be placed.
-CONTENTS_PATH="contents/"
-
 # Specifies the maximum content file limit in bytes.
 FILE_LIMIT=10485760
+
+# Specifies the directory where all content files should be placed.
+FILES_PATH="contents/"
 
 # Specifies the port the localhost server will be hosted on.
 PORT=1364
@@ -47,11 +47,11 @@ TOKEN=""
 
 ## API
 
+### (GET) `/file/<uuid>`
+
+Returns the raw file associated with the uuid. Returned MIME type will always be `image/*`, `video/*` or `text/plain`.
+
 ### (GET) `/content/<uuid>`
-
-Returns the raw image associated with the uuid.
-
-### (GET) `/data/<uuid>`
 
 Returns the content data associated with the uuid in the follow format:
 
@@ -141,6 +141,18 @@ type Packet = {
 
 The `file` form data must contain an image or a video blob.
 
+Returned value will always be in the following format:
+
+```ts
+type Packet = {
+    data: object;
+    name: string;
+    tags: string[];
+    time: number;
+    uuid: string;
+};
+```
+
 ### (POST) `/update`
 
 Updates a content of the specified uuid. Modifying the associated data requires the `json` form data. Modifying the associated file requires the `file` form data.
@@ -159,6 +171,18 @@ type Packet = {
 
 The `file` form data must contain an image or a video blob.
 
+Returned value will always be in the following format:
+
+```ts
+type Packet = {
+    data: object;
+    name: string;
+    tags: string[];
+    time: number;
+    uuid: string;
+};
+```
+
 ### (POST) `/remove`
 
 Removes a content of the specified uuid. Requires the `json` form data.
@@ -171,6 +195,40 @@ type Packet = {
 };
 ```
 
+Returned value will always be in the following format:
+
+```ts
+type Packet = {
+    data: object;
+    name: string;
+    tags: string[];
+    time: number;
+    uuid: string;
+};
+```
+
+### Error Codes
+
+All possible error codes are listed below:
+
+| Error Code | Description |
+|-|-|
+| BAD_FILE | Form data for `file` does not exist or is invalid. |
+| BAD_JSON | Form data for `json` does not exist or is invalid. |
+| INVALID_DATA | Field `data` in the `json` form data is invalid or missing. |
+| INVALID_NAME | Field `name` in the `json` form data is invalid or missing. |
+| INVALID_TAGS | Field `tags` in the `json` form data is invalid or missing. |
+| INVALID_TIME | Field `time` in the `json` form data is invalid or missing. |
+| INVALID_TOKEN | Field `token` in the `json` form data is invalid or missing. |
+| INVALID_UUID | Field `uuid` in the `json` form data is invalid or missing. |
+| LARGE_SOURCE | Source file exceeds file limit or store limit. |
+| MISSING_ASSET | Asset file does not exist. |
+| MISSING_CONTENT | Content does not exist. |
+| SERVER_ERROR | Any server error that occurs. |
+| UNAUTHORIZED_TOKEN | plz stop hacking me ty |
+| UNSUPPORTED_MIME | Source file MIME type is not `image/*` or `video/*`. |
+
+
 ## Web View
 After running the `bun run start` command, a localhost server is created. Accessing the localhost server will open a web view of the CDN.
 
@@ -181,5 +239,5 @@ Additional guides will be provided when I complete the CLI.
 
 ---
 
-###### Last Updated: April 19th, 2025
+###### Last Updated: April 20th, 2025
 ###### [(Back to Top)](#dmmd--image-cdn-dmmd-icdn)
