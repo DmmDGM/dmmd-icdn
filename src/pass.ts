@@ -40,6 +40,6 @@ export const error = (requestTarget: Request, error: any) => {
         except(requestTarget, error) :
         json(requestTarget, {
             code: "SERVER_ERROR",
-            message: error instanceof Error ? error.message : String(error)
+            message: "Internal server error"
         }, 500);
 };
