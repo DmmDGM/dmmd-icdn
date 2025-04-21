@@ -255,11 +255,7 @@ type Packet = Summary;
 
 <details>
 
-<summary>
-
-**Description**
-
-</summary>
+<summary><b>Description</b></summary>
 
 Updates a content of the specified uuid. Modifying the associated data requires the `json` form data. Modifying the associated file requires the `file` form data. The `file` form data must contain an image or a video blob.
 
