@@ -141,6 +141,7 @@ Bun.serve({
                     ),
                     sort: parameters.sort === null ? void 0 : (
                         parameters.sort === "name" ||
+                        parameters.sort === "size" ||
                         parameters.sort === "time" ||
                         parameters.sort === "uuid" ?
                             parameters.sort : void 0

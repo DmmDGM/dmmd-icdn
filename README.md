@@ -106,7 +106,7 @@ Below are the available parameters:
 | `?name=string` | All content must contain partially or completely the specified name. |
 | `?order=ascending\|descending` | Whether the returned uuids should be sorted in ascending or descending order. Default is `descending`. |
 | `?page=number` | Page offset. Starting with `0` as the first page. Default is `0`. |
-| `?sort=name\|time\|uuid` | Sorting algorithm. Default is `time`. |
+| `?sort=name\|size\|time\|uuid` | Sorting algorithm. Default is `time`. |
 | `?tags=csv` | All content must contain the specified tags. If multiple is specified, tags should be separated by commas. If `?loose=true`, the tags filter is also searched loosely. |
 | `?uuid=string` | The content must have the complete and exact uuid as the specified uuid. |
 

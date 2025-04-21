@@ -97,10 +97,10 @@ export function search(filter: {
     minimum?: number,
     name?: string,
     order?: "ascending" | "descending",
-    sort?: "name" | "time" | "uuid",
+    sort?: "name" | "size" | "time" | "uuid",
     tags?: string[],
     uuid?: string,
-} = {}, count: number = Infinity, page: number = 0): string[] {
+} = {}, count: number = 25, page: number = 0): string[] {
     // Creates escaper
     const escape = (string: string) => string.replace(/[\\%_]/g, "\\$0");
 
@@ -159,8 +159,9 @@ export function search(filter: {
     // Creates sort
     const order = typeof filter.order === "undefined" || filter.order === "descending" ? "DESC" : "ASC";
     const sort = `ORDER BY ${{
-        "name": "Name, Time, ContentId",
-        "time": "Time, Name, ContentId",
+        "name": "Name, Time, Size, ContentId",
+        "size": "Size, Time, Name, ContentId",
+        "time": "Time, Name, Size, ContentId",
         "uuid": "ContentId"
     }[typeof filter.sort === "undefined" ? "time" : filter.sort]} ${order}`;
 
@@ -183,7 +184,7 @@ export function search(filter: {
 }
 
 // Defines list function
-export function list(count: number = Infinity, page: number = 0): string[] {
+export function list(count: number = 25, page: number = 0): string[] {
     // Creates limit
     const offset = count * page;
     const limit = isFinite(count) ? `LIMIT ${count} OFFSET ${offset}` : "";
