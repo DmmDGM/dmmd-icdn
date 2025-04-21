@@ -47,6 +47,15 @@ export type Schema = {
 // Defines source type
 export type Source<Data extends object> = Omit<Content<Data>, "uuid">;
 
+// Defines status type
+export type Status = {
+    fileLimit: number;
+    length: number;
+    protected: boolean;
+    size: number;
+    storeLimit: number;
+};
+
 // Creates store
 export const store = bunSqlite.open(env.storePath);
 if(!await nodeFile.exists(env.filesPath)) await nodeFile.mkdir(env.filesPath);
@@ -217,9 +226,9 @@ export async function add<Data extends object>(source: Source<Data>): Promise<Co
     
     // Checks source file
     if(!inspect.checkMime(source.mime))
-        throw new except.Exception(except.Codes.UNSUPPORTED_MIME);
+        throw new except.Exception(except.Code.UNSUPPORTED_MIME);
     if(!inspect.checkSize(await size(), source.size))
-        throw new except.Exception(except.Codes.LARGE_SOURCE);
+        throw new except.Exception(except.Code.LARGE_SOURCE);
 
     // Creates file
     const file = Bun.file(nodePath.resolve(env.filesPath, uuid));
@@ -264,7 +273,7 @@ export async function update<Data extends object>(
     // Checks uuid
     const existing = await query<Data>(uuid);
     if(existing === null)
-        throw new except.Exception(except.Codes.MISSING_CONTENT);
+        throw new except.Exception(except.Code.MISSING_CONTENT);
     
     // Creates predicates
     let keys: string[] = [];
@@ -285,9 +294,9 @@ export async function update<Data extends object>(
     ) {
         // Checks source file
         if(!inspect.checkMime(source.mime))
-            throw new except.Exception(except.Codes.UNSUPPORTED_MIME);
+            throw new except.Exception(except.Code.UNSUPPORTED_MIME);
         if(!inspect.checkSize(await size(), source.size, existing.size))
-            throw new except.Exception(except.Codes.LARGE_SOURCE);
+            throw new except.Exception(except.Code.LARGE_SOURCE);
 
         // Updates file
         await source.file.write(source.buffer);
@@ -333,7 +342,7 @@ export async function remove<Data extends object>(uuid: string): Promise<Content
     // Checks content
     const content = (await query<Data>(uuid))!;
     if(content === null)
-        throw new except.Exception(except.Codes.MISSING_CONTENT);
+        throw new except.Exception(except.Code.MISSING_CONTENT);
 
     // Removes content
     await content.file.delete();
@@ -366,6 +375,18 @@ export async function size(): Promise<number> {
 
     // Returns size
     return total;
+}
+
+// Defines status function
+export async function status(): Promise<Status> {
+    // Returns response
+    return {
+        fileLimit: env.fileLimit,
+        length: length(),
+        protected: env.token.length > 0,
+        size: await size(),
+        storeLimit: env.storeLimit
+    };
 }
 
 // Defines pack function

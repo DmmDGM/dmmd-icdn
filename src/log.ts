@@ -17,38 +17,39 @@ export function now(): string {
     return string;
 }
 
-// Defines listen log
-export function listen(port: number): void {
-    // Constructs message
-    const banner = `[${now()}] LISTEN`;
-    const url = `http://localhost:${port}/`;
-    const content = `Server listening on port ${chalk.cyan(port)} (${chalk.cyan(url)})`;
-    const message = chalk.green(`${banner} | ${content}`);
-
-    // Prints message
-    console.log(message);
-}
-
-// Defines info log
+// Defines info logger
 export function info(content: string): void {
     // Constructs message
-    const banner = `[${now()}] INFO`;
-    const message = chalk.blue(`${banner} | ${content}`);
+    const head = `[${now()}] INFO`;
+    const body = content;
+    const message = chalk.blue(`${head} | ${body}`);
 
     // Prints message
     console.log(message);
 }
 
-// Defines route log
+// Defines listen logger
+export function listen(port: number): void {
+    // Constructs message
+    const head = `[${now()}] LISTEN`;
+    const url = chalk.cyan(`http://localhost:${port}/`);
+    const body = `Server listening on ${url}`;
+    const message = chalk.green(`${head} | ${body}`);
+
+    // Prints message
+    console.log(message);
+}
+
+// Defines route logger
 export function route(request: Request, response: Response): void {
     // Constructs message
-    const banner = `[${now()}] ROUTE`;
+    const head = `[${now()}] ROUTE`;
     const ip = chalk.cyan(request.headers.get("CF-Connecting-IP") ?? "Unknown");
     const url = chalk.cyan(request.url);
     const code = chalk.cyan(response.status);
-    const content = `${ip} accessed ${url} with status ${code}`;
+    const body = `${ip} accessed ${url} with status ${code}`;
     const status = response.ok ? chalk.green("(OK)") : chalk.red("(FAILED)");
-    const message = chalk.yellowBright(`${banner} | ${content} ${status}`);
+    const message = chalk.yellowBright(`${head} | ${body} ${status}`);
 
     // Prints message
     console.log(message);

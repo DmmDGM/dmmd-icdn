@@ -6,6 +6,7 @@ import * as except from "./src/except";
 import * as inspect from "./src/inspect";
 import * as log from "./src/log";
 import * as pass from "./src/pass";
+import * as server from "./src/server";
 
 // Creates server
 Bun.serve({
@@ -21,17 +22,10 @@ Bun.serve({
             // Returns assets
             try {
                 // Checks path
-                const path = nodePath.resolve(env.assetsPath, request.params.asset);
-                if(!path.startsWith(env.assetsPath))
-                    throw new except.Exception(except.Codes.MISSING_ASSET);
-
-                // Checks asset
-                const asset = Bun.file(path);
-                if(!(await asset.exists()))
-                    throw new except.Exception(except.Codes.MISSING_ASSET);
+                const blob = await server.asset(request.params.asset);
     
                 // Returns response
-                return pass.response(request, new Response(asset));
+                return pass.file(request, blob, blob.type);
             }
             catch(error) {
                 // Returns error
@@ -39,22 +33,15 @@ Bun.serve({
             }
         },
 
-        // Handles api requests for accessing store data
-        "/store": async (request: Bun.BunRequest<"/store">) => {
+        // Handles api requests for accessing status data
+        "/status": async (request: Bun.BunRequest<"/status">) => {
             // Returns content
             try {
-                // Fetches store data
-                const length = cdn.length();
-                const size = await cdn.size();
+                // Fetches status
+                const status = await server.status();
     
                 // Returns response
-                return pass.json(request, {
-                    fileLimit: env.fileLimit,
-                    length: length,
-                    protected: env.token.length > 0,
-                    size: size,
-                    storeLimit: env.storeLimit
-                });
+                return pass.json(request, status);
             }
             catch(error) {
                 // Returns error
@@ -69,10 +56,10 @@ Bun.serve({
                 // Creates content
                 const content = await cdn.query(request.params.uuid);
                 if(content === null)
-                    throw new except.Exception(except.Codes.MISSING_CONTENT);
+                    throw new except.Exception(except.Code.MISSING_CONTENT);
     
                 // Returns response
-                return pass.response(request, new Response(content.file, {
+                return pass.route(request, new Response(content.file, {
                     headers: {
                         "Content-Disposition": `attachment; filename="${content.name}.${content.extension}"`,
                         "Content-Type": "application/octet-stream"
@@ -92,10 +79,10 @@ Bun.serve({
                 // Creates content
                 const content = await cdn.query(request.params.uuid);
                 if(content === null)
-                    throw new except.Exception(except.Codes.MISSING_CONTENT);
+                    throw new except.Exception(except.Code.MISSING_CONTENT);
     
                 // Returns response
-                return pass.response(request, new Response(content.file, {
+                return pass.route(request, new Response(content.file, {
                     headers: {
                         "Content-Type": content.mime
                     }
@@ -112,7 +99,7 @@ Bun.serve({
                 // Creates content
                 const content = await cdn.query(request.params.uuid);
                 if(content === null)
-                    throw new except.Exception(except.Codes.MISSING_CONTENT);
+                    throw new except.Exception(except.Code.MISSING_CONTENT);
     
                 // Returns response
                 return pass.json(request, cdn.pack(content));
@@ -192,33 +179,6 @@ Bun.serve({
         },
 
         // Handles api requests for polling data
-        "/all": async (request: Bun.BunRequest<"/all">) => {
-            // Returns uuids
-            try {
-                // Creates predicates
-                const parameters = new URL(request.url).searchParams;
-                const predicates = {
-                    count: parameters.get("count"),
-                    page: parameters.get("page")
-                };
-    
-                // Creates search
-                const count = predicates.count === null ? void 0 : +predicates.count;
-                const page = predicates.page === null ? void 0 : +predicates.page;
-                const packets = await Promise.all(
-                    cdn
-                        .list(count, page)
-                        .map(async (uuid) => cdn.pack((await cdn.query(uuid))!))
-                );
-    
-                // Returns response
-                return pass.json(request, packets);
-            }
-            catch(error) {
-                // Returns error
-                return pass.error(request, error);
-            }
-        },
         "/list": async (request: Bun.BunRequest<"/list">) => {
             // Returns uuids
             try {
@@ -226,16 +186,18 @@ Bun.serve({
                 const parameters = new URL(request.url).searchParams;
                 const predicates = {
                     count: parameters.get("count"),
-                    page: parameters.get("page")
+                    page: parameters.get("page"),
+                    query: parameters.get("query")
                 };
     
                 // Creates search
                 const count = predicates.count === null ? void 0 : +predicates.count;
                 const page = predicates.page === null ? void 0 : +predicates.page;
+                const query = predicates.query === "true";
                 const uuids = cdn.list(count, page);
-    
+                
                 // Returns response
-                return pass.json(request, uuids);
+                return pass.json(request, query ? uuids : );
             }
             catch(error) {
                 // Returns error
@@ -259,7 +221,7 @@ Bun.serve({
                         typeof parsed !== "object" ||
                         parsed === null
                     )
-                        throw new except.Exception(except.Codes.BAD_JSON);
+                        throw new except.Exception(except.Code.BAD_JSON);
                     
                     // Validates token
                     if(env.token.length > 0) {
@@ -268,17 +230,17 @@ Bun.serve({
                             !("token" in parsed) ||
                             typeof parsed.token !== "string"
                         )
-                            throw new except.Exception(except.Codes.INVALID_TOKEN);
+                            throw new except.Exception(except.Code.INVALID_TOKEN);
                             
                         // Checks token
                         const token = parsed.token;
                         if(token !== env.token)
-                            throw new except.Exception(except.Codes.UNAUTHORIZED_TOKEN);
+                            throw new except.Exception(except.Code.UNAUTHORIZED_TOKEN);
                     }
                     
                     // Parses file
                     if(!(file instanceof Blob))
-                        throw new except.Exception(except.Codes.BAD_FILE);
+                        throw new except.Exception(except.Code.BAD_FILE);
 
                     // Parses json
                     if(
@@ -286,24 +248,24 @@ Bun.serve({
                         typeof parsed.data !== "object" ||
                         parsed.data === null
                     )
-                        throw new except.Exception(except.Codes.INVALID_DATA);
+                        throw new except.Exception(except.Code.INVALID_DATA);
                     if(
                         !("name" in parsed) ||
                         typeof parsed.name !== "string"
                     )
-                        throw new except.Exception(except.Codes.INVALID_NAME);
+                        throw new except.Exception(except.Code.INVALID_NAME);
                     if(
                         !("tags" in parsed) ||
                         !Array.isArray(parsed.tags) ||
                         parsed.tags.some((tag) => typeof tag !== "string")
                     )
-                        throw new except.Exception(except.Codes.INVALID_TAGS);
+                        throw new except.Exception(except.Code.INVALID_TAGS);
                     if(
                         !("time" in parsed) ||
                         typeof parsed.time !== "number" ||
                         parsed.time < 0
                     )
-                        throw new except.Exception(except.Codes.INVALID_TIME);
+                        throw new except.Exception(except.Code.INVALID_TIME);
 
                     // Creates source
                     const buffer = await file.arrayBuffer();
@@ -350,7 +312,7 @@ Bun.serve({
                         typeof parsed !== "object" ||
                         parsed === null
                     ) 
-                        throw new except.Exception(except.Codes.BAD_JSON)
+                        throw new except.Exception(except.Code.BAD_JSON)
 
                     // Validates token
                     if(env.token.length > 0) {
@@ -359,12 +321,12 @@ Bun.serve({
                             !("token" in parsed) ||
                             typeof parsed.token !== "string"
                         )
-                            throw new except.Exception(except.Codes.INVALID_TOKEN);
+                            throw new except.Exception(except.Code.INVALID_TOKEN);
                             
                         // Checks token
                         const token = parsed.token;
                         if(token !== env.token)
-                            throw new except.Exception(except.Codes.UNAUTHORIZED_TOKEN);
+                            throw new except.Exception(except.Code.UNAUTHORIZED_TOKEN);
                     }
 
                     // Parses uuid
@@ -372,13 +334,13 @@ Bun.serve({
                         !("uuid" in parsed) ||
                         typeof parsed.uuid !== "string"
                     )
-                        throw new except.Exception(except.Codes.INVALID_UUID);
+                        throw new except.Exception(except.Code.INVALID_UUID);
                     const uuid = parsed.uuid;
 
                     // Parses file
                     if(file !== null) {
                         if(!(file instanceof Blob))
-                            throw new except.Exception(except.Codes.BAD_FILE);
+                            throw new except.Exception(except.Code.BAD_FILE);
                         const buffer = await file.arrayBuffer();
                         const type = await inspect.getType(buffer);
                         source.buffer = buffer;
@@ -394,14 +356,14 @@ Bun.serve({
                             typeof parsed.data !== "object" ||
                             parsed.data === null
                         )
-                        throw new except.Exception(except.Codes.INVALID_DATA);
+                        throw new except.Exception(except.Code.INVALID_DATA);
                         source.data = parsed.data;
                     }
                     if("name" in parsed) {
                         if(
                             typeof parsed.name !== "string"
                         )
-                            throw new except.Exception(except.Codes.INVALID_NAME);
+                            throw new except.Exception(except.Code.INVALID_NAME);
                         source.name = parsed.name;
                     }
                     if("tags" in parsed) {
@@ -409,7 +371,7 @@ Bun.serve({
                             !Array.isArray(parsed.tags) ||
                             parsed.tags.some((tag) => typeof tag !== "string")
                         )
-                            throw new except.Exception(except.Codes.INVALID_TAGS);
+                            throw new except.Exception(except.Code.INVALID_TAGS);
                         source.tags = parsed.tags as string[];
                     }
                     if("time" in parsed) {
@@ -417,7 +379,7 @@ Bun.serve({
                             typeof parsed.time !== "number" ||
                             parsed.time < 0
                         )
-                            throw new except.Exception(except.Codes.INVALID_TIME);
+                            throw new except.Exception(except.Code.INVALID_TIME);
                         source.time = new Date(parsed.time);
                     }
 
@@ -447,7 +409,7 @@ Bun.serve({
                         typeof parsed !== "object" ||
                         parsed === null
                     )
-                        throw new except.Exception(except.Codes.BAD_JSON);
+                        throw new except.Exception(except.Code.BAD_JSON);
 
                     // Validates token
                     if(env.token.length > 0) {
@@ -456,12 +418,12 @@ Bun.serve({
                             !("token" in parsed) ||
                             typeof parsed.token !== "string"
                         )
-                            throw new except.Exception(except.Codes.INVALID_TOKEN);
+                            throw new except.Exception(except.Code.INVALID_TOKEN);
                             
                         // Checks token
                         const token = parsed.token;
                         if(token !== env.token)
-                            throw new except.Exception(except.Codes.UNAUTHORIZED_TOKEN);
+                            throw new except.Exception(except.Code.UNAUTHORIZED_TOKEN);
                     }
 
                     // Parses uuid
@@ -469,7 +431,7 @@ Bun.serve({
                         !("uuid" in parsed) ||
                         typeof parsed.uuid !== "string"
                     )
-                        throw new except.Exception(except.Codes.INVALID_UUID);
+                        throw new except.Exception(except.Code.INVALID_UUID);
                     const uuid = parsed.uuid;
 
                     // Removes content
@@ -488,7 +450,7 @@ Bun.serve({
         // Handles api requests for web view
         "/": (request: Bun.BunRequest<"/">) => {
             // Returns response
-            return pass.response(request, new Response(
+            return pass.route(request, new Response(
                 Bun.file(nodePath.resolve(
                     env.rootPath,
                     "./index.html"

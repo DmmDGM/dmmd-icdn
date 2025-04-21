@@ -1,48 +1,80 @@
 // Imports
-import { Exception } from "./except";
 import * as env from "./env";
+import * as except from "./except";
 import * as log from "./log";
 
-// Creates passers
-export const response = (requestTarget: Request, responseTarget: Response) => {
-    // Logs response
-    log.route(requestTarget, responseTarget);
-
-    // Returns response
-    return responseTarget;
-};
-export const except = (requestTarget: Request, exception: Exception) => {
+// Creates download passer
+export function download(request: Request, file: Bun.BunFile, name: string): Response {
     // Creates response
-    const responseTarget = Response.json({
-        code: exception.code,
-        message: exception.message
-    }, { status: exception.status });
+    const response = new Response(file, {
+        headers: {
+            "Content-Disposition": `attachment; filename="${name}"`,
+            "Content-Type": "application/octet-stream"
+        }
+    });
 
     // Returns response
-    return response(requestTarget, responseTarget);
-};
-export const json = (requestTarget: Request, jsonData: any, statusCode: number = 200) => {
-    // Creates response
-    const responseTarget = Response.json(jsonData, { status: statusCode });
+    return route(request, response);
+}
 
+// Creates error passer
+export function error(request: Request, error: any): Response {
     // Returns response
-    return response(requestTarget, responseTarget);
-};
-export const message = (requestTarget: Request, messageText: string, statusCode: number = 200) => {
-    // Creates response
-    const responseTarget = new Response(messageText, { status: statusCode });
-
-    // Returns response
-    return response(requestTarget, responseTarget);
-};
-export const error = (requestTarget: Request, error: any) => {
-    // Returns response
-    return error instanceof Exception ?
-        except(requestTarget, error) :
-        json(requestTarget, {
-            code: "SERVER_ERROR",
+    return error instanceof except.Exception ?
+        exception(request, error) :
+        json(request, {
+            code: except.Code.SERVER_ERROR,
             message: env.debug ?
                 (error instanceof Error ? error.message : String(error)) :
-                "Internal server error."
-        }, 500);
-};
+                except.Message.SERVER_ERROR
+        }, except.Status.SERVER_ERROR);
+}
+
+// Creates exception passer
+export function exception(request: Request, exception: except.Exception): Response {
+    // Returns response
+    return json(request, {
+        code: exception.code,
+        message: exception.message
+    }, exception.status);
+}
+
+// Creates file passer
+export function file(request: Request, file: Bun.BunFile, mime: string): Response {
+    // Creates response
+    const response = new Response(file, {
+        headers: {
+            "Content-Type": mime
+        }
+    });
+
+    // Returns response
+    return route(request, response);
+}
+
+// Creates json passer
+export function json(request: Request, data: any, status: number = 200): Response {
+    // Creates response
+    const response = Response.json(data, { status: status });
+
+    // Returns response
+    return route(request, response);
+}
+
+// Creates message passer
+export function message(request: Request, content: string, status: number = 200): Response {
+    // Creates response
+    const response = new Response(content, { status: status });
+
+    // Returns response
+    return route(request, response);
+}
+
+// Creates route passer
+export function route(request: Request, response: Response): Response {
+    // Logs response
+    log.route(request, response);
+
+    // Returns response
+    return response;
+}
