@@ -1,16 +1,17 @@
 // Imports
-import { fileTypeFromBuffer } from "file-type";
-import nodeFile from "node:fs/promises";
-import nodePath from "node:path";
+import { fileTypeFromBuffer, type FileTypeResult } from "file-type";
 import * as env from "./env";
 
-// Defines mime fetcher function
-export async function getMime(buffer: ArrayBuffer): Promise<string> {
+// Defines type fetcher function
+export async function getType(buffer: ArrayBuffer): Promise<FileTypeResult> {
     // Checks type
     const type = await fileTypeFromBuffer(buffer);
     
     // Returns mime
-    return typeof type === "undefined" || !checkMime(type.mime) ? "text/plain" : type.mime;
+    return typeof type === "undefined" || !checkMime(type.mime) ? {
+        ext: "txt",
+        mime: "text/plain"
+    } : type;
 }
 
 // Defines mime checker function
@@ -23,13 +24,13 @@ export function checkMime(mime: string): boolean {
 export function checkSize(
     total: number,
     size: number,
-    included: boolean = true
+    existing: number = 0,
 ): boolean {
     // Checks file size
     if(size > env.fileLimit) return false;
 
     // Checks store size
-    if(total + (included ? 0 : size) > env.storeLimit) return false;
+    if(total + size - existing > env.storeLimit) return false;
 
     // Returns true
     return true;

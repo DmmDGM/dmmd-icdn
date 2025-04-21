@@ -99,6 +99,7 @@ Below are the available parameters:
 | `?begin=number` | All content must have an associated time after the specified timestamp. |
 | `?count=number` | The number of uuids returned per page. Settings the value to `0` removes the limit. Default is `25`. |
 | `?end=number` | All content must have an associated time before the specified timestamp. |
+| `?extension=string` | All content extension must contain partially or completely the specified extension. |
 | `?loose=boolean` | If `true`, all filters must be satisfied for the content uuid to be returned. If `false`, only at least one filter must be satisfied for the content uuid to be returned. Default is `false`. |
 | `?maximum=number` | All content size must not exceed the specified maximum. |
 | `?mime=string` | All content MIME type must contain partially or completely the specified MIME type. |
@@ -117,6 +118,7 @@ Returns all content data in the following format:
 ```ts
 type Packet = {
     data: object;
+    extension: string;
     mime: string;
     name: string;
     size: number;
@@ -156,6 +158,7 @@ The `json` form data must contain the following format:
 ```ts
 type Packet = {
     data: object;
+    extension: string;
     mime: string;
     name: string;
     size: number;
@@ -172,6 +175,7 @@ Returned value will always be in the following format:
 ```ts
 type Packet = {
     data: object;
+    extension: string;
     mime: string;
     name: string;
     size: number;
@@ -204,6 +208,7 @@ Returned value will always be in the following format:
 ```ts
 type Packet = {
     data: object;
+    extension: string;
     mime: string;
     name: string;
     size: number;
@@ -230,6 +235,7 @@ Returned value will always be in the following format:
 ```ts
 type Packet = {
     data: object;
+    extension: string;
     mime: string;
     name: string;
     size: number;

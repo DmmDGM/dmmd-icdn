@@ -10,6 +10,7 @@ import * as inspect from "./inspect";
 export type Content<Data extends object> = {
     buffer: ArrayBuffer;
     data: Data;
+    extension: string;
     file: Bun.BunFile;
     mime: string;
     name: string;
@@ -22,6 +23,7 @@ export type Content<Data extends object> = {
 // Definse packet type
 export type Packet<Data extends object> = {
     data: Data;
+    extension: string;
     mime: string;
     name: string;
     size: number;
@@ -34,6 +36,7 @@ export type Packet<Data extends object> = {
 export type Schema = {
     ContentId: string;
     Data: string;
+    Extension: string;
     Mime: string;
     Name: string;
     Size: number;
@@ -51,6 +54,7 @@ store.run(`
     CREATE TABLE IF NOT EXISTS Contents (
         ContentId TEXT UNIQUE PRIMARY KEY,
         Data TEXT NOT NULL,
+        Extension TEXT NOT NULL,
         Mime TEXT NOT NULL,
         Name TEXT NOT NULL,
         Size INTEGER,
@@ -63,7 +67,7 @@ store.run(`
 export async function query<Data extends object>(uuid: string): Promise<Content<Data> | null> {
     // Creates query
     const schema = store.query(`
-        SELECT ContentId, Data, Mime, Name, Size, Tags, Time
+        SELECT ContentId, Data, Extension, Mime, Name, Size, Tags, Time
         FROM Contents
         WHERE ContentId = ?
         LIMIT 1;
@@ -77,6 +81,7 @@ export async function query<Data extends object>(uuid: string): Promise<Content<
     return {
         buffer: await file.arrayBuffer(),
         data: JSON.parse(schema.Data),
+        extension: schema.Extension,
         file: file,
         size: schema.Size,
         mime: schema.Mime,
@@ -91,6 +96,7 @@ export async function query<Data extends object>(uuid: string): Promise<Content<
 export function search(filter: {
     begin?: Date,
     end?: Date,
+    extension?: string,
     loose?: boolean,
     maximum?: number,
     mime?: string,
@@ -132,6 +138,10 @@ export function search(filter: {
     else if(typeof filter.maximum !== "undefined") {
         predicates.push("Time <= ?");
         values.push(filter.maximum);
+    }
+    if(typeof filter.extension !== "undefined") {
+        predicates.push(`Extension LIKE ? ESCAPE '\\'`);
+        values.push(`%${escape(filter.extension)}%`);
     }
     if(typeof filter.mime !== "undefined") {
         predicates.push(`Mime LIKE ? ESCAPE '\\'`);
@@ -217,11 +227,12 @@ export async function add<Data extends object>(source: Source<Data>): Promise<Co
     // Adds data
     await file.write(source.buffer);
     store.run(`
-        INSERT INTO Contents (ContentId, Data, Mime, Name, Size, Tags, Time)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO Contents (ContentId, Data, Extension, Mime, Name, Size, Tags, Time)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
         uuid,
         JSON.stringify(source.data),
+        source.extension,
         source.mime,
         source.name,
         source.size,
@@ -233,6 +244,7 @@ export async function add<Data extends object>(source: Source<Data>): Promise<Co
     const content: Content<Data> = {
         buffer: source.buffer,
         data: source.data,
+        extension: source.extension,
         file: file,
         mime: source.mime,
         name: source.name,
@@ -250,13 +262,20 @@ export async function update<Data extends object>(
     source: Partial<Source<Data>>
 ): Promise<Content<Data>> {
     // Checks uuid
-    if(!query<Data>(uuid))
+    const existing = await query<Data>(uuid);
+    if(existing === null)
         throw new except.Exception(except.Codes.MISSING_CONTENT);
+    
+    // Creates predicates
+    let keys: string[] = [];
+    let values: (string | number)[] = [];
 
     // Updates file
     if(
         "buffer" in source &&
         typeof source.buffer !== "undefined" &&
+        "extension" in source &&
+        typeof source.extension !== "undefined" &&
         "file" in source &&
         typeof source.file !== "undefined" &&
         "mime" in source &&
@@ -267,16 +286,18 @@ export async function update<Data extends object>(
         // Checks source file
         if(!inspect.checkMime(source.mime))
             throw new except.Exception(except.Codes.UNSUPPORTED_MIME);
-        if(!inspect.checkSize(await size(), source.size, true))
+        if(!inspect.checkSize(await size(), source.size, existing.size))
             throw new except.Exception(except.Codes.LARGE_SOURCE);
 
         // Updates file
-        await source.file.write(await source.file.arrayBuffer());
+        await source.file.write(source.buffer);
+        
+        // Appends predicates
+        keys = keys.concat([ "Extension", "Mime", "Size" ]);
+        values = values.concat([ source.extension, source.mime, source.size ]);
     }
     
     // Parses fields
-    const keys: string[] = [];
-    const values: (string | number)[] = [];
     if("data" in source && typeof source.data !== "undefined") {
         keys.push("Data");
         values.push(JSON.stringify(source.data));
@@ -352,6 +373,7 @@ export function pack<Data extends object>(content: Content<Data>): Packet<Data> 
     // Creates packet
     const packet: Packet<Data> = {
         data: content.data,
+        extension: content.extension,
         mime: content.mime,
         name: content.name,
         size: content.size,

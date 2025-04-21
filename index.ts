@@ -39,7 +39,7 @@ Bun.serve({
             }
         },
 
-        // Handles api requests for store data
+        // Handles api requests for accessing store data
         "/store": async (request: Bun.BunRequest<"/store">) => {
             // Returns content
             try {
@@ -55,6 +55,29 @@ Bun.serve({
                     size: size,
                     storeLimit: env.storeLimit
                 });
+            }
+            catch(error) {
+                // Returns error
+                return pass.error(request, error);
+            }
+        },
+
+        // Handles api requests for downloading data
+        "/download/:uuid": async (request: Bun.BunRequest<"/download/:uuid">) => {
+            // Returns content
+            try {
+                // Creates content
+                const content = await cdn.query(request.params.uuid);
+                if(content === null)
+                    throw new except.Exception(except.Codes.MISSING_CONTENT);
+    
+                // Returns response
+                return pass.response(request, new Response(content.file, {
+                    headers: {
+                        "Content-Disposition": `attachment; filename="${content.name}.${content.extension}"`,
+                        "Content-Type": "application/octet-stream"
+                    }
+                }));
             }
             catch(error) {
                 // Returns error
@@ -110,6 +133,7 @@ Bun.serve({
                     begin: attributes.get("begin"),
                     count: attributes.get("count"),
                     end: attributes.get("end"),
+                    extension: attributes.get("extension"),
                     loose: attributes.get("loose"),
                     maximum: attributes.get("maximum"),
                     mime: attributes.get("mime"),
@@ -128,6 +152,7 @@ Bun.serve({
                         void 0 : new Date(+parameters.begin),
                     end: parameters.end === null || isNaN(+parameters.end) ?
                         void 0 : new Date(+parameters.end),
+                    extension: parameters.extension === null ? void 0 : parameters.extension,
                     loose: parameters.loose === null ? void 0 : parameters.loose === "true",
                     maximum: parameters.maximum === null || isNaN(+parameters.maximum) ?
                         void 0 : +parameters.maximum,
@@ -282,11 +307,13 @@ Bun.serve({
 
                     // Creates source
                     const buffer = await file.arrayBuffer();
+                    const type = await inspect.getType(buffer);
                     const source: cdn.Source<object> = {
                         buffer: buffer,
                         data: parsed.data,
+                        extension: type.ext,
                         file: file as Bun.BunFile,
-                        mime: await inspect.getMime(buffer),
+                        mime: type.mime,
                         name: parsed.name,
                         size: buffer.byteLength,
                         tags: parsed.tags as string[],
@@ -353,9 +380,11 @@ Bun.serve({
                         if(!(file instanceof Blob))
                             throw new except.Exception(except.Codes.BAD_FILE);
                         const buffer = await file.arrayBuffer();
+                        const type = await inspect.getType(buffer);
                         source.buffer = buffer;
+                        source.extension = type.ext;
                         source.file = file as Bun.BunFile;
-                        source.mime = await inspect.getMime(buffer);
+                        source.mime = type.mime;
                         source.size = buffer.byteLength;
                     }
 
