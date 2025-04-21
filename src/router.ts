@@ -86,6 +86,9 @@ export function add(): Router {
         if(!(file instanceof Blob))
             throw new except.Exception(except.Code.BAD_FILE);
 
+        // Checks query
+        const query = "query" in object && object.query === true;
+
         // Creates source
         const buffer = await file.arrayBuffer();
         const source: cdn.Source = {
@@ -98,10 +101,9 @@ export function add(): Router {
 
         // Adds source
         const content = await cdn.add(source);
-        const summary = await cdn.summarize(content);
 
         // Returns response
-        return pass.json(request, summary);
+        return pass.json(request, query ? await cdn.summarize(content) : content.uuid);
     };
 
     // Returns router
@@ -253,12 +255,14 @@ export function remove(): Router {
         if(!("uuid" in object) || typeof object.uuid !== "string")
             throw new except.Exception(except.Code.INVALID_UUID);
 
+        // Checks query
+        const query = "query" in object && object.query === true;
+
         // Removes source
         const content = await cdn.remove(object.uuid);
-        const summary = await cdn.summarize(content);
 
         // Returns response
-        return pass.json(request, summary);
+        return pass.json(request, query ? await cdn.summarize(content) : content.uuid);
     };
 
     // Returns router
@@ -438,12 +442,14 @@ export function update(): Router {
             source.buffer = await file.arrayBuffer();
         }
 
+        // Checks query
+        const query = "query" in object && object.query === true;
+
         // Updates source
         const content = await cdn.update(object.uuid, source);
-        const summary = await cdn.summarize(content);
 
         // Returns response
-        return pass.json(request, summary);
+        return pass.json(request, query ? await cdn.summarize(content) : content.uuid);
     };
 
     // Returns router

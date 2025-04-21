@@ -22,9 +22,6 @@ bun run start
 
 All project configuration should be placed inside of the `.env` file in your working directory.
 
-> [!NOTE]
-> All keys displayed are optional. The indicated values are the internal default values.
-
 ```env
 # Whether to enable debug mode.
 DEBUG=false
@@ -48,75 +45,36 @@ STORE_PATH="store.sqlite"
 TOKEN=""
 ```
 
-## API
+## Types
 
-### (GET) `/store`
+### Details
 
-Returns data about the store in the following format:
+#### Description
+
+Details about the store itself.
+
+#### Structure
 
 ```ts
-type Packet = {
+type Details = {
     fileLimit: number;
-    length: number;
     protected: boolean;
-    size: number;
+    storeLength: number;
     storeLimit: number;
-};
+    storeSize: number;
+}
 ```
 
-### (GET) `/file/<uuid>`
+### Summary
 
-Returns the raw file associated with the uuid. Returned MIME type will always be `image/*`, `video/*` or `text/plain`.
+#### Description
 
-### (GET) `/query/<uuid>`
+Summary data of content.
 
-Returns the content data associated with the uuid in the following format:
-
-```ts
-type Packet = {
-    data: object;
-    mime: string;
-    name: string;
-    size: number;
-    tags: string[];
-    time: number;
-    uuid: string;
-};
-```
-
-### (GET) `/search`
-
-Returns a list of uuids of the contents that satisfy the filter in the following format:
+#### Structure
 
 ```ts
-type Packet = string[];
-```
-
-Below are the available parameters:
-
-| Parameter | Description |
-|-|-|
-| `?begin=number` | All content must have an associated time after the specified timestamp. |
-| `?count=number` | The number of uuids returned per page. Settings the value to `0` removes the limit. Default is `25`. |
-| `?end=number` | All content must have an associated time before the specified timestamp. |
-| `?extension=string` | All content extension must contain partially or completely the specified extension. |
-| `?loose=boolean` | If `true`, all filters must be satisfied for the content uuid to be returned. If `false`, only at least one filter must be satisfied for the content uuid to be returned. Default is `false`. |
-| `?maximum=number` | All content size must not exceed the specified maximum. |
-| `?mime=string` | All content MIME type must contain partially or completely the specified MIME type. |
-| `?minimum=number` | All content size must not go under the specified minimum. |
-| `?name=string` | All content must contain partially or completely the specified name. |
-| `?order=ascending\|descending` | Whether the returned uuids should be sorted in ascending or descending order. Default is `descending`. |
-| `?page=number` | Page offset. Starting with `0` as the first page. Default is `0`. |
-| `?sort=name\|size\|time\|uuid` | Sorting algorithm. Default is `time`. |
-| `?tags=csv` | All content must contain the specified tags. If multiple is specified, tags should be separated by commas. If `?loose=true`, the tags filter is also searched loosely. |
-| `?uuid=string` | The content must have the complete and exact uuid as the specified uuid. |
-
-### (GET) `/all`
-
-Returns all content data in the following format:
-
-```ts
-type Packet = {
+type Summary = {
     data: object;
     extension: string;
     mime: string;
@@ -124,130 +82,26 @@ type Packet = {
     size: number;
     tags: string[];
     time: number;
-    uuid: string;
-}[];
-```
-
-Below are the available parameters:
-
-| Parameter | Description |
-|-|-|
-| `?count=number` | The number of uuids returned per page. Settings the value to `0` removes the limit. Default is `25`. |
-| `?page=number` | Page offset. Starting with `0` as the first page. Default is `0`. |
-
-### (GET) `/list`
-
-Returns all uuids in the following format:
-
-```ts
-type Packet = string[];
-```
-
-Below are the available parameters:
-
-| Parameter | Description |
-|-|-|
-| `?count=number` | The number of uuids returned per page. Settings the value to `0` removes the limit. Default is `25`. |
-| `?page=number` | Page offset. Starting with `0` as the first page. Default is `0`. |
-
-### (POST) `/add`
-
-Adds a content to the CDN. Requires the `json` and `file` form data.
-
-The `json` form data must contain the following format:
-```ts
-type Packet = {
-    data: object;
-    extension: string;
-    mime: string;
-    name: string;
-    size: number;
-    tags: string[];
-    token?: string;
-    time: number;
+    uuid: UUID;
 };
 ```
 
-The `file` form data must contain an image or a video blob.
+> [!NOTE]
+> References: [UUID](#uuid)
 
-Returned value will always be in the following format:
+### UUID
 
-```ts
-type Packet = {
-    data: object;
-    extension: string;
-    mime: string;
-    name: string;
-    size: number;
-    tags: string[];
-    time: number;
-    uuid: string;
-};
-```
+#### Description
 
-### (POST) `/update`
+The UUID associated with the content.
 
-Updates a content of the specified uuid. Modifying the associated data requires the `json` form data. Modifying the associated file requires the `file` form data.
-
-The `json` form data must contain the following format:
-```ts
-type Packet = {
-    data?: object;
-    name?: string;
-    tags?: string[];
-    token?: string;
-    time?: number;
-    uuid: string;
-};
-```
-
-The `file` form data must contain an image or a video blob.
-
-Returned value will always be in the following format:
+#### Structure
 
 ```ts
-type Packet = {
-    data: object;
-    extension: string;
-    mime: string;
-    name: string;
-    size: number;
-    tags: string[];
-    time: number;
-    uuid: string;
-};
+type UUID = string;
 ```
 
-### (POST) `/remove`
-
-Removes a content of the specified uuid. Requires the `json` form data.
-
-The `json` form data must contain the following format:
-```ts
-type Packet = {
-    token?: string;
-    uuid: string;
-};
-```
-
-Returned value will always be in the following format:
-
-```ts
-type Packet = {
-    data: object;
-    extension: string;
-    mime: string;
-    name: string;
-    size: number;
-    tags: string[];
-    time: number;
-    uuid: string;
-};
-```
-
-### Error Codes
-
-All possible error codes are listed below:
+## Errors
 
 | Error Code | Description |
 |-|-|
@@ -266,6 +120,194 @@ All possible error codes are listed below:
 | UNAUTHORIZED_TOKEN | plz stop hacking me ty |
 | UNSUPPORTED_MIME | Source file MIME type is not `image/*` or `video/*`. |
 
+## API
+
+### (GET) `/details`
+
+#### Return Type
+
+```ts
+type Packet = Details;
+```
+
+> [!NOTE]
+> References: [Details](#details)
+
+### (GET) `/file/<uuid>`
+
+#### Description
+
+Returns the raw file associated with the uuid. Returned MIME type will always be `image/*`, `video/*` or `text/plain`.
+
+### (GET) `/query/<uuid>`
+
+#### Description
+
+Returns the content data associated with the uuid.
+
+#### Return Type
+
+```ts
+type Packet = Summary;
+```
+
+> [!NOTE]
+> References: [Summary](#summary)
+
+### (GET) `/search`
+
+#### Description
+
+Returns a list of uuids or summaries of the contents that satisfy the filter.
+
+#### Return Type
+
+```ts
+type Packet = UUID[];
+```
+
+```ts
+type Packet = Summary[];
+```
+
+> [!NOTE]
+> References: [Summary](#summary), [UUID](#uuid)
+
+#### Parameters
+
+| Parameter | Description |
+|-|-|
+| `?begin=number` | All content must have an associated time after the specified timestamp. |
+| `?count=number` | The number of uuids returned per page. Settings the value to `0` removes the limit. Default is `25`. |
+| `?end=number` | All content must have an associated time before the specified timestamp. |
+| `?extension=string` | All content extension must contain partially or completely the specified extension. |
+| `?loose=boolean` | If `true`, all filters must be satisfied for the content uuid to be returned. If `false`, only at least one filter must be satisfied for the content uuid to be returned. Default is `false`. |
+| `?maximum=number` | All content size must not exceed the specified maximum. |
+| `?mime=string` | All content MIME type must contain partially or completely the specified MIME type. |
+| `?minimum=number` | All content size must not go under the specified minimum. |
+| `?name=string` | All content must contain partially or completely the specified name. |
+| `?order=ascending\|descending` | Whether the returned uuids should be sorted in ascending or descending order. Default is `descending`. |
+| `?page=number` | Page offset. Starting with `0` as the first page. Default is `0`. |
+| `?query=boolean` | Whether to display the summary instead of the uuid. Default is `false`. |
+| `?sort=name\|size\|time\|uuid` | Sorting algorithm. Default is `time`. |
+| `?tags=csv` | All content must contain the specified tags. If multiple is specified, tags should be separated by commas. If `?loose=true`, the tags filter is also searched loosely. |
+| `?uuid=string` | The content must have the complete and exact uuid as the specified uuid. |
+
+### (GET) `/list`
+
+#### Description
+
+Returns all uuids or summaries.
+
+#### Return Type
+
+```ts
+type Packet = UUID[];
+```
+
+```ts
+type Packet = Summary[];
+```
+
+> [!NOTE]
+> References: [Summary](#summary), [UUID](#uuid)
+
+#### Parameters
+
+| Parameter | Description |
+|-|-|
+| `?count=number` | The number of uuids returned per page. Settings the value to `0` removes the limit. Default is `25`. |
+| `?page=number` | Page offset. Starting with `0` as the first page. Default is `0`. |
+| `?query=boolean` | Whether to display the summary instead of the uuid. Default is `false`. |
+
+### (POST) `/add`
+
+#### Description
+Adds a content to the CDN. Requires the `json` and `file` form data. The `file` form data must contain an image or a video blob.
+
+#### Form Data
+
+```ts
+type FormData<"json"> = {
+    data: object;
+    name: string;
+    tags: string[];
+    token?: string;
+    query?: boolean;
+    time: number;
+};
+```
+
+#### Return Type
+
+```ts
+type Packet = UUID;
+```
+
+```ts
+type Packet = Summary;
+```
+
+> [!NOTE]
+> References: [Summary](#summary), [UUID](#uuid)
+
+### (POST) `/update`
+
+Updates a content of the specified uuid. Modifying the associated data requires the `json` form data. Modifying the associated file requires the `file` form data. The `file` form data must contain an image or a video blob.
+
+#### Form Data
+
+```ts
+type FormData<"json"> = {
+    data?: object;
+    name?: string;
+    tags?: string[];
+    token?: string;
+    query?: boolean;
+    time?: number;
+    uuid: string;
+};
+```
+
+#### Return Type
+
+```ts
+type Packet = UUID;
+```
+
+```ts
+type Packet = Summary;
+```
+
+> [!NOTE]
+> References: [Summary](#summary), [UUID](#uuid)
+
+### (POST) `/remove`
+
+Removes a content of the specified uuid. Requires the `json` form data.
+
+#### Form Data
+
+```ts
+type FormData<"json"> = {
+    token?: string;
+    query?: boolean;
+    uuid: string;
+};
+```
+
+#### Return Type
+
+```ts
+type Packet = UUID;
+```
+
+```ts
+type Packet = Summary;
+```
+
+> [!NOTE]
+> References: [Summary](#summary), [UUID](#uuid)
 
 ## Web View
 After running the `bun run start` command, a localhost server is created. Accessing the localhost server will open a web view of the CDN.
