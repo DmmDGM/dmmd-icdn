@@ -266,8 +266,9 @@ After running the `bun run start` command, a localhost server is created. Access
 
 Additional guides will be provided when I complete the web view interface.
 
-## Command Line Interface
-Additional guides will be provided when I complete the CLI.
+## Python API and Command Line Interface
+
+See support at iiPython's [dmmd-py](https://github.com/iiPythonx/dmmd-py/).
 
 ---
 
