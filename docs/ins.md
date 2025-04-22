@@ -3,9 +3,9 @@
 ## Table of Contents
 
 - [Home](../README.md)
-    - [Installation](./installation.md)
-    - [Configuration](./configuration.md)
-    - [Errors](./errors.md)
+    - [Installation](./ins.md)
+    - [Configuration](./env.md)
+    - [Errors](./err.md)
     - [API](./api.md)
 
 ## Installation
