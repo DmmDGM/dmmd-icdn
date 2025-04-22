@@ -152,16 +152,11 @@ type FormData<"json"> = {
     name: string;
     tags: string[];
     token?: string;
-    query?: boolean;
     time: number;
 };
 ```
 
 ### Return Type
-
-```ts
-type Packet = string;
-```
 
 ```ts
 type Packet = {
@@ -190,17 +185,12 @@ type FormData<"json"> = {
     name?: string;
     tags?: string[];
     token?: string;
-    query?: boolean;
     time?: number;
     uuid: string;
 };
 ```
 
 ### Return Type
-
-```ts
-type Packet = string;
-```
 
 ```ts
 type Packet = {
@@ -224,16 +214,11 @@ Removes a content of the specified uuid. Requires the `json` form data.
 ```ts
 type FormData<"json"> = {
     token?: string;
-    query?: boolean;
     uuid: string;
 };
 ```
 
 ### Return Type
-
-```ts
-type Packet = string;
-```
 
 ```ts
 type Packet = {

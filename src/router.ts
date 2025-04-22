@@ -85,10 +85,7 @@ export function add(): Router {
         // Checks file
         if(!(file instanceof Blob))
             throw new except.Exception(except.Code.BAD_FILE);
-
-        // Checks query
-        const query = "query" in object && object.query === true;
-
+        
         // Creates source
         const buffer = await file.arrayBuffer();
         const source: cdn.Source = {
@@ -103,7 +100,7 @@ export function add(): Router {
         const content = await cdn.add(source);
 
         // Returns response
-        return pass.json(request, query ? await cdn.summarize(content) : content.uuid);
+        return pass.json(request, await cdn.summarize(content));
     };
 
     // Returns router
@@ -194,7 +191,9 @@ export function list(): Router {
         
         // Returns response
         return pass.json(request, query ?
-            await Promise.all(uuids.map(async (uuid) => await cdn.summarize(await cdn.query(uuid)))) :
+            await Promise.all(uuids.map(async (uuid) =>
+                await cdn.summarize(await cdn.query(uuid))
+            )) :
             uuids
         );
     };
@@ -258,14 +257,11 @@ export function remove(): Router {
         if(!("uuid" in object) || typeof object.uuid !== "string")
             throw new except.Exception(except.Code.INVALID_UUID);
 
-        // Checks query
-        const query = "query" in object && object.query === true;
-
         // Removes source
         const content = await cdn.remove(object.uuid);
 
         // Returns response
-        return pass.json(request, query ? await cdn.summarize(content) : content.uuid);
+        return pass.json(request, await cdn.summarize(content));
     };
 
     // Returns router
@@ -370,7 +366,9 @@ export function search(): Router {
         
         // Returns response
         return pass.json(request, query ?
-            await Promise.all(uuids.map(async (uuid) => await cdn.summarize(await cdn.query(uuid)))) :
+            await Promise.all(uuids.map(async (uuid) =>
+                await cdn.summarize(await cdn.query(uuid))
+            )) :
             uuids
         );
     };
@@ -449,14 +447,11 @@ export function update(): Router {
             source.buffer = await file.arrayBuffer();
         }
 
-        // Checks query
-        const query = "query" in object && object.query === true;
-
         // Updates source
         const content = await cdn.update(object.uuid, source);
 
         // Returns response
-        return pass.json(request, query ? await cdn.summarize(content) : content.uuid);
+        return pass.json(request, await cdn.summarize(content));
     };
 
     // Returns router
