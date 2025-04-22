@@ -5,7 +5,7 @@
 - [Home](./README.md)
     - [Installation](./docs/installation.md)
     - [Configuration](./docs/configuration.md)
-    - [Errors](./docs/error.md)
+    - [Errors](./docs/errors.md)
     - [API](./docs/api.md)
 
 ## About
