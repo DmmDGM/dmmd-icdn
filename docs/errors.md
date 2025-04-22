@@ -25,6 +25,7 @@
 | MISSING_CONTENT | Content does not exist. |
 | SERVER_ERROR | Any server error that occurs. |
 | UNAUTHORIZED_TOKEN | plz stop hacking me ty |
+| UNKNOWN_EXCEPTION | Something broke really badly. |
 | UNSUPPORTED_MIME | Source file MIME type is not `image/*` or `video/*`. |
 
 ---
