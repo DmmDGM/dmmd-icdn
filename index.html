@@ -118,11 +118,11 @@
             async function create(uuid) {
                 // Fetches mime
                 const uri = `/preview/${uuid}`;
-                const mime = (await fetch(uri, { method: "HEAD" })).headers.get("Content-Type");
-                if(mime === null || mime === "text/plain") throw new Error("Invalid MIME");
+                // const mime = (await fetch(uri, { method: "HEAD" })).headers.get("Content-Type");
+                // if(mime === null || mime === "text/plain") throw new Error("Invalid MIME");
 
                 // Creates element
-                const tag = mime.startsWith("image/") ? "img" : "video";
+                const tag = "img";
                 const item = document.createElement(tag);
                 item.src = uri;
                 item.classList.add("item");
@@ -141,7 +141,7 @@
             }
 
             async function loadAll() {
-                const uuids = await (await fetch("/list")).json();
+                const uuids = await (await fetch("/list?count=100")).json();
                 const start = performance.now();
                 await Promise.all(uuids.map(async (uuid) => {
                     gallery.appendChild(await create(uuid));

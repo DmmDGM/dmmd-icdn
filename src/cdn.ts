@@ -88,18 +88,7 @@ export function escape(text: string): string {
 }
 
 // Defines snapshot function
-export async function snapshot(uuid: string, buffer: ArrayBuffer): Promise<Buffer> {
-    // Creates mime
-    const type = await fileTypeFromBuffer(buffer);
-    if(typeof type === "undefined")
-        throw new except.Exception(except.Code.UNSUPPORTED_MIME);
-    const mime = type.mime;
-
-    // Creates path
-    const path = nodePath.resolve(env.filesPath, uuid);
-    if(!(await nodeFile.exists(path)))
-        throw new except.Exception(except.Code.MISSING_CONTENT);
-
+export async function snapshot(uuid: string, buffer: ArrayBuffer, mime: string): Promise<Buffer> {
     // Creates preview
     let original = buffer;
 
@@ -111,34 +100,38 @@ export async function snapshot(uuid: string, buffer: ArrayBuffer): Promise<Buffe
             "-v", "error",
             "-show_entries", "format=duration",
             "-of", "default=noprint_wrappers=1:nokey=1",
-            path,
+            "-i", nodePath.resolve(env.filesPath, uuid),
         ], {
+            stdin: "ignore",
             stdout: "pipe",
             stderr: "ignore"
         });
+        await ffprobe.exited;
     
         // Creates time
-        const float = parseFloat((await new Response(ffprobe.stdout).text()).trim());
-        const seconds = isNaN(float) ? 0 : Math.trunc(Math.min(float / 2, 10));
+        const float = parseFloat((await Bun.readableStreamToText(ffprobe.stdout)).trim());
+        const seconds = isNaN(float) ? 0 : Math.trunc(Math.min(float / 2, 5));
         const time = `00:00:${seconds.toString().padStart(2, "0")}`;
     
         // Creates ffmpeg
         const ffmpeg = Bun.spawn([
             nodePath.resolve(env.ffmpegPath, "ffmpeg"),
             "-ss", time,
-            "-i", path,
+            "-i", nodePath.resolve(env.filesPath, uuid),
             "-frames:v", "1",
             "-q:v", "2",
             "-f", "image2",
             "-vcodec", "png",
             "pipe:1"
         ], {
+            stdin: "ignore",
             stdout: "pipe",
             stderr: "ignore"
         });
-    
+        await ffmpeg.exited;
+        
         // Creates stream
-        const clip = await new Response(ffmpeg.stdout).arrayBuffer();
+        const clip = await Bun.readableStreamToArrayBuffer(ffmpeg.stdout);
         original = clip;
     }
     
@@ -448,7 +441,7 @@ export async function add(source: Source): Promise<Content> {
 
     // Updates values
     await content.file.write(content.buffer);
-    await content.preview.write(await snapshot(content.uuid, content.buffer));
+    await content.preview.write(await snapshot(uuid, source.buffer, mime));
     store.run(`
         INSERT INTO Contents (ContentId, Data, Extension, Mime, Name, Size, Tags, Time)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -471,6 +464,14 @@ export async function add(source: Source): Promise<Content> {
 export async function update(uuid: string, source: Partial<Source>): Promise<Content> {
     // Creates original
     const original = await query(uuid);
+
+    // Creates meta
+    let file: {
+        buffer: ArrayBuffer;
+        extension: string;
+        mime: string;
+        size: number;
+    } | null = null;
 
     // Creates pairs
     const keys: string[] = [];
@@ -496,6 +497,14 @@ export async function update(uuid: string, source: Partial<Source>): Promise<Con
         // Appends pairs
         keys.push("Extension", "Mime", "Size");
         values.push(extension, mime, size);
+
+        // Updates file
+        file = {
+            buffer: source.buffer,
+            extension: extension,
+            mime: mime,
+            size: size
+        };
     }
 
     // Creates data pair
@@ -530,9 +539,9 @@ export async function update(uuid: string, source: Partial<Source>): Promise<Con
     values.push(uuid);
 
     // Updates values
-    if(typeof source.buffer !== "undefined") {
-        await original.file.write(source.buffer);
-        await original.preview.write(await snapshot(uuid, source.buffer));
+    if(file !== null) {
+        await original.file.write(file.buffer);
+        await original.preview.write(await snapshot(uuid, file.buffer, file.mime));
     }
     store.run(`
         UPDATE Contents
