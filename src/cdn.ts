@@ -238,7 +238,7 @@ export async function search(filter: Filter, count: number, page: number): Promi
     // Creates name predicate
     if(filter.name !== null) {
         // Appends predicate
-        predicates.push(`Mime LIKE ? ESCAPE '\\'`);
+        predicates.push(`Name LIKE ? ESCAPE '\\'`);
         values.push(`%${escape(filter.name)}%`);
     }
 
