@@ -23,7 +23,7 @@
 | LARGE_SOURCE | Source file exceeds file limit or store limit. |
 | MISSING_ASSET | Asset file does not exist. |
 | MISSING_CONTENT | Content does not exist. |
-| SERVER_ERROR | Any server error that occurs. |
+| SERVER_EXCEPTION | Any server exception error that occurs. |
 | UNAUTHORIZED_TOKEN | plz stop hacking me ty |
 | UNKNOWN_EXCEPTION | Something broke really badly. |
 | UNSUPPORTED_MIME | Source file MIME type is not `image/*` or `video/*`. |
