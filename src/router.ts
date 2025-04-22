@@ -193,7 +193,10 @@ export function list(): Router {
         const uuids = await cdn.list(count, page);
         
         // Returns response
-        return pass.json(request, query ? uuids : Promise.all(uuids.map((uuid) => cdn.query(uuid))));
+        return pass.json(request, query ?
+            await Promise.all(uuids.map(async (uuid) => await cdn.summarize(await cdn.query(uuid)))) :
+            uuids
+        );
     };
 
     // Returns router
@@ -365,7 +368,10 @@ export function search(): Router {
         const uuids = await cdn.search(filter, count, page);
         
         // Returns response
-        return pass.json(request, query ? uuids : Promise.all(uuids.map((uuid) => cdn.query(uuid))));
+        return pass.json(request, query ?
+            await Promise.all(uuids.map(async (uuid) => await cdn.summarize(await cdn.query(uuid)))) :
+            uuids
+        );
     };
 
     // Returns router
