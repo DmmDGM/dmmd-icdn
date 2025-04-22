@@ -280,6 +280,7 @@ export function resource(file: string): Router {
         switch(file) {
             // Handles resources requests
             case "favicon.ico":
+            case "index.html":
             case "robots.txt": {
                 // Creates blob
                 const blob = Bun.file(nodePath.resolve(env.rootPath, file));
