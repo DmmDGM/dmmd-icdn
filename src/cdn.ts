@@ -90,7 +90,7 @@ export function escape(text: string): string {
 // Defines snapshot function
 export async function snapshot(uuid: string, buffer: ArrayBuffer, mime: string): Promise<Buffer> {
     // Creates preview
-    let original = buffer;
+    let clip = buffer;
 
     // Generates frame
     if(mime.startsWith("video/")) {
@@ -130,16 +130,16 @@ export async function snapshot(uuid: string, buffer: ArrayBuffer, mime: string):
         });
         await ffmpeg.exited;
         
-        // Creates stream
-        const clip = await Bun.readableStreamToArrayBuffer(ffmpeg.stdout);
-        original = clip;
+        // Creates frame
+        const frame = await Bun.readableStreamToArrayBuffer(ffmpeg.stdout);
+        clip = frame;
     }
     
-    // Creates frame
-    const frame = await sharp(original).resize({ height: 240 }).avif().toBuffer();
+    // Creates thumbnail
+    const thumbnail = await sharp(clip).resize({ height: 240 }).avif().toBuffer();
     
-    // Returns frame
-    return frame;
+    // Returns thumbnail
+    return thumbnail;
 }
 
 // Defines summarize function
