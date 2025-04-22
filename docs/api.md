@@ -34,6 +34,12 @@ type Packet = {
 };
 ```
 
+## (GET) `/preview/<uuid>`
+
+### Description
+
+Returns the preview file associated with the uuid. Returned MIME type will always be `image/avif`.
+
 ## (GET) `/file/<uuid>`
 
 ### Description

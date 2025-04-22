@@ -149,6 +149,24 @@ export async function snapshot(uuid: string, buffer: ArrayBuffer): Promise<Buffe
     return frame;
 }
 
+// Defines summarize function
+export async function summarize(content: Content): Promise<Summary> {
+    // Creates summary
+    const summary: Summary = {
+        data: content.data,
+        extension: content.extension,
+        mime: content.mime,
+        name: content.name,
+        size: content.size,
+        tags: content.tags,
+        time: content.time.getTime(),
+        uuid: content.uuid
+    };
+
+    // Returns summary
+    return summary;
+}
+
 // Creates store
 export const store = await create();
 
@@ -548,24 +566,6 @@ export async function remove(uuid: string): Promise<Content> {
 
     // Returns content
     return content;
-}
-
-// Defines summarize function
-export async function summarize(content: Content): Promise<Summary> {
-    // Creates summary
-    const summary: Summary = {
-        data: content.data,
-        extension: content.extension,
-        mime: content.mime,
-        name: content.name,
-        size: content.size,
-        tags: content.tags,
-        time: content.time.getTime(),
-        uuid: content.uuid
-    };
-
-    // Returns summary
-    return summary;
 }
 
 // Ensures creation
