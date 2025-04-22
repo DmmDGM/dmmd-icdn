@@ -392,9 +392,8 @@ export async function add(source: Source): Promise<Content> {
 
 // Defines update function
 export async function update(uuid: string, source: Partial<Source>): Promise<Content> {
-    // Tests content
-    if(!(await test(uuid)))
-        throw new except.Exception(except.Code.MISSING_CONTENT);
+    // Creates original
+    const original = await query(uuid);
 
     // Creates pairs
     const keys: string[] = [];
@@ -414,7 +413,7 @@ export async function update(uuid: string, source: Partial<Source>): Promise<Con
         // Checks size
         const size = source.buffer.byteLength;
         const status = await info();
-        if(size > env.fileLimit || status.size + size > env.storeLimit)
+        if(size > env.fileLimit || status.size + size - original.size > env.storeLimit)
             throw new except.Exception(except.Code.LARGE_SOURCE);
 
         // Appends pairs
@@ -455,7 +454,7 @@ export async function update(uuid: string, source: Partial<Source>): Promise<Con
 
     // Updates values
     if(typeof source.buffer !== "undefined")
-        await Bun.file(nodePath.resolve(env.filesPath, uuid)).write(source.buffer);
+        await original.file.write(source.buffer);
     store.run(`
         UPDATE Contents
         SET ${keys.map((key) => `${key} = ?`).join(", ")}
