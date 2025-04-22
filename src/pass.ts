@@ -23,11 +23,11 @@ export function error(request: Request, error: any): Response {
     return error instanceof except.Exception ?
         exception(request, error) :
         json(request, {
-            code: except.Code.SERVER_ERROR,
+            code: except.Code.SERVER_EXCEPTION,
             message: env.debug ?
                 (error instanceof Error ? error.message : String(error)) :
-                except.Message.SERVER_ERROR
-        }, except.Status.SERVER_ERROR);
+                except.Message.SERVER_EXCEPTION
+        }, except.Status.SERVER_EXCEPTION);
 }
 
 // Creates exception passer

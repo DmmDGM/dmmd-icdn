@@ -12,7 +12,7 @@ export enum Code {
     MISSING_ASSET = "MISSING_ASSET",
     MISSING_CONTENT = "MISSING_CONTENT",
     MISSING_RESOURCE = "MISSING_RESOURCE",
-    SERVER_ERROR = "SERVER_ERROR",
+    SERVER_EXCEPTION = "SERVER_EXCEPTION",
     UNAUTHORIZED_TOKEN = "UNAUTHORIZED_TOKEN",
     UNKNOWN_EXCEPTION = "UNKNOWN_EXCEPTION",
     UNSUPPORTED_MIME = "UNSUPPORTED_MIME"
@@ -32,7 +32,7 @@ export enum Message {
     MISSING_ASSET = "Asset not found.",
     MISSING_CONTENT = "Content not found.",
     MISSING_RESOURCE = "Resource not found.",
-    SERVER_ERROR = "Internal server error.",
+    SERVER_EXCEPTION = "Internal server exception.",
     UNAUTHORIZED_TOKEN = "Accesss unauthorized.",
     UNKNOWN_EXCEPTION = "Unknown exception. Please alert the developer.",
     UNSUPPORTED_MIME = "Source file MIME type is not accepted."
@@ -52,7 +52,7 @@ export enum Status {
     MISSING_ASSET = 404,
     MISSING_CONTENT = 404,
     MISSING_RESOURCE = 404,
-    SERVER_ERROR = 500,
+    SERVER_EXCEPTION = 500,
     UNAUTHORIZED_TOKEN = 401,
     UNKNOWN_EXCEPTION = 500,
     UNSUPPORTED_MIME = 415
