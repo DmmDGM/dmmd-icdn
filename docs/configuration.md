@@ -16,6 +16,9 @@ All project configuration should be placed inside of the `.env` file in your wor
 # Whether to enable debug mode.
 DEBUG=false
 
+# Specifies the directory of the user's ffmpeg binaries.
+FFMPEG_PATH="ffmpeg/"
+
 # Specifies the maximum content file limit in bytes.
 FILE_LIMIT=10485760
 
@@ -24,6 +27,9 @@ FILES_PATH="files/"
 
 # Specifies the port the localhost server will be hosted on.
 PORT=1364
+
+# Specifies the directory where all content previews should be placed.
+PREVIEWS_PATH="previews/"
 
 # Specifies the maximum total file limit in bytes.
 STORE_LIMIT=53687091200

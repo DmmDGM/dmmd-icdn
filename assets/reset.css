@@ -1,0 +1,29 @@
+/* Resets */
+html, body {
+    /* Applies background */
+    background-color: var(--sd-mono-50);
+    
+    /* Fixes size */
+    height: 100vh;
+    width: 100vw;
+
+    /* Fixes spacing */
+    margin: 0px;
+    padding: 0px;
+}
+
+* {
+    /* Applies color */
+    color: var(--sd-mono-1000);
+    
+    /* Applies font */
+    font-family: "Oxygen";
+    font-size: 14px;
+    line-height: 14px;
+}
+
+/* Defines body */
+body {
+    display: flex;
+    flex-direction: column;
+}

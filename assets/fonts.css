@@ -1,0 +1,14 @@
+/* Defines fonts */
+@font-face {
+    /* Defines font */
+    font-family: "Oxygen";
+    font-weight: normal;
+    src: url("./oxygen.woff2") format("woff2");
+}
+
+@font-face {
+    /* Defines font */
+    font-family: "Oxygen";
+    font-weight: bold;
+    src: url("./oxygen-bold.woff2") format("woff2");
+}

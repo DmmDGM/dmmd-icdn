@@ -3,215 +3,19 @@
 <html lang="en">
     <!-- Head -->
     <head>
+        <!-- Meta -->
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <!-- Title -->
         <title>Gallery</title>
+
+        <!-- Styles -->
+        <link rel="stylesheet" href="./assets/fonts.css">
         <link rel="stylesheet" href="./assets/soda.css">
-        <style>
-            /* Defines fonts */
-            @font-face {
-                /* Defines font */
-                font-family: "Oxygen";
-                font-weight: normal;
-                src: url("./assets/oxygen.woff2") format("woff2");
-            }
-
-            @font-face {
-                /* Defines font */
-                font-family: "Oxygen";
-                font-weight: bold;
-                src: url("./assets/oxygen-bold.woff2") format("woff2");
-            }
-
-            /* Resets body */
-            html, body {
-                /* Applies background */
-                background-color: var(--sd-mono-50);
-                
-                /* Fixes size */
-                height: 100vh;
-                width: 100vw;
-
-                /* Fixes spacing */
-                margin: 0px;
-                padding: 0px;
-            }
-
-            * {
-                /* Applies color */
-                color: var(--sd-mono-1000);
-                
-                /* Applies font */
-                font-family: "Oxygen";
-                font-size: 14px;
-                line-height: 14px;
-            }
-
-            /* Body */
-            body {
-                display: flex;
-                flex-direction: column;
-            }
-
-            /* Navigation */
-            nav {
-                /* Applies background */
-                background-color: var(--sd-mono-200);
-                
-                /* Fixes size */
-                height: 30px;
-
-                /* Fixes spacing */
-                margin-bottom: 10px;
-                padding: 10px 15px;
-
-                /* Displays flex */
-                display: flex;
-                gap: 0px 15px;
-            }
-
-            nav button, nav input {
-                /* Applies background */
-                background-color: var(--sd-mono-400);
-
-                /* Removes borders */
-                border: none;
-                outline: none;
-
-                /* Creates animation */
-                opacity: 75%;
-                transition: opacity 0.2s ease;
-            }
-
-            nav button:hover, nav input:hover {
-                /* Applies animation */
-                opacity: 100%;
-            }
-
-            nav button {
-                /* Fixes size */
-                height: 30px;
-
-                /* Fixes spacing */
-                padding: 5px 10px;
-
-                /* Displays flex */
-                align-items: center;
-                display: flex;
-                justify-content: center;
-            }
-
-            nav button:first-child {
-                /* Fixes spacing */
-                padding: 5px 10px 5px 15px;
-
-                /* Rounds borders */
-                border-radius: 15px 0px 0px 15px;
-            }
-
-            nav button:last-child {
-                /* Fixes spacing */
-                padding: 5px 15px 5px 10px;
-                
-                /* Rounds borders */
-                border-radius: 0px 15px 15px 0px;
-            }
-
-            nav button:only-child {
-                /* Fixes spacing */
-                padding: 5px 15px 5px 15px;
-
-                /* Rounds borders */
-                border-radius: 15px;
-            }
-
-            nav button.active {
-                /* Applies background */
-                background-color: var(--sd-mono-600);
-            }
-
-            nav input {
-                /* Fixes size */
-                height: 20px;
-                
-                /* Fixes spacing */
-                padding: 5px 20px;
-
-                /* Displays flex */
-                align-items: center;
-                display: flex;
-
-                /* Rounds borders */
-                border-radius: 15px;
-            }
-
-            /* Home */
-            #home {
-                /* Displays flex */
-                align-items: center;
-                display: flex;
-                justify-content: center;
-            }
-
-            #home span {
-                /* Applies font */
-                font-size: 16px;
-                font-weight: bold;
-                line-height: 16px;
-            }
-
-            /* Order */
-            #order {
-                /* Displays flex */
-                display: flex;
-            }
-
-            /* Sort */
-            #sort {
-                /* Displays flex */
-                display: flex;
-            }
-
-            /* Search */
-            #search {
-                /* Displays flex */
-                flex: 1;
-            }
-
-            /* Controls */
-            #controls {
-                /* Displays flex */
-                display: flex;
-            }
-
-            /* Gallery */
-            #gallery {
-                display: flex;
-                padding: 0px 10px 10px 10px;
-                flex-wrap: wrap;
-                gap: 10px 10px;
-                /* flex: 1; */
-                overflow-y: scroll;
-            }
-            
-            #gallery .box {
-                padding: 10px;
-                border: none;
-                outline: none;
-                border-radius: 5px;
-                background-color: var(--sd-mono-200);
-                opacity: 75%;
-                transition: opacity 0.2s ease;
-            }
-
-            #gallery .box:hover {
-                opacity: 100%;
-            }
-
-            #gallery .item {
-                height: 250px;
-            }
-        </style>
+        <link rel="stylesheet" href="./assets/reset.css">
+        <link rel="stylesheet" href="./assets/navigation.css">
+        <link rel="stylesheet" href="./assets/gallery.css">
     </head>
 
     <!-- Body -->
@@ -241,7 +45,8 @@
         <!-- Gallery -->
         <div id="gallery"></div>
 
-        <!-- Script -->
+        <!-- Scripts -->
+        <script src="./assets/index.js" type="module"></script>
         <script>
             // Defines gallery
             const gallery = document.getElementById("gallery");
@@ -312,7 +117,7 @@
             // Defines loaders
             async function create(uuid) {
                 // Fetches mime
-                const uri = `/file/${uuid}`;
+                const uri = `/preview/${uuid}`;
                 const mime = (await fetch(uri, { method: "HEAD" })).headers.get("Content-Type");
                 if(mime === null || mime === "text/plain") throw new Error("Invalid MIME");
 
@@ -337,13 +142,12 @@
 
             async function loadAll() {
                 const uuids = await (await fetch("/list")).json();
-                for(let i = 0; i < uuids.length; i++) {
-                    gallery.appendChild(await create(uuids[i]));
-                    gallery.appendChild(await create(uuids[i]));
-                    gallery.appendChild(await create(uuids[i]));
-                    gallery.appendChild(await create(uuids[i]));
-                    gallery.appendChild(await create(uuids[i]));
-                }
+                const start = performance.now();
+                await Promise.all(uuids.map(async (uuid) => {
+                    gallery.appendChild(await create(uuid));
+                }));
+                const end = performance.now();
+                console.log(end - start);
             }
 
             loadAll();

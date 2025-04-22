@@ -15,19 +15,20 @@ Bun.serve({
         "/robots.txt": router.resource("robots.txt"),
         "/": router.resource("index.html"),
 
-        // Handles api requests for accessing details
+        // Handles store-related api requests
         "/details": router.details(),
 
-        // Handles api requests for querying content
+        // Handles single-query api requests
         "/download/:uuid": router.download(),
         "/file/:uuid": router.file(),
+        "/preview/:uuid": router.preview(),
         "/query/:uuid": router.query(),
 
-        // Handles api requests for polling content
+        // Handles multi-query api requests
         "/list": router.list(),
         "/search": router.search(),
 
-        // Handles api requests for modifying data
+        // Handles post api requests
         "/add": { POST: router.add() },
         "/update": { POST: router.update() },
         "/remove": { POST: router.remove() }

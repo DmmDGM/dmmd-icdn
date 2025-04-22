@@ -1,7 +1,8 @@
 {
     "dependencies": {
         "chalk": "^5.4.1",
-        "file-type": "^20.4.1"
+        "file-type": "^20.4.1",
+        "sharp": "^0.34.1"
     },
     "devDependencies": {
         "@types/bun": "latest"

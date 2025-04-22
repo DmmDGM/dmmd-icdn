@@ -1,5 +1,6 @@
 // Imports
 import nodePath from "node:path";
+import sharp from "sharp";
 import * as cdn from "./cdn";
 import * as env from "./env";
 import * as except from "./except";
@@ -9,28 +10,6 @@ import * as pass from "./pass";
 export type Router<
     RouterRequest extends Request = Request
 > = (request: RouterRequest) => Promise<Response>;
-
-// Defines assets router
-export function asset(): Router {
-    // Creates router
-    const router: Router<Bun.BunRequest<"/assets/:asset">> = async (request) => {
-        // Checks path
-        const path = nodePath.resolve(env.assetsPath, request.params.asset);
-        if(!path.startsWith(env.assetsPath))
-            throw new except.Exception(except.Code.MISSING_ASSET);
-
-        // Checks blob
-        const blob = Bun.file(path);
-        if(!(await blob.exists()))
-            throw new except.Exception(except.Code.MISSING_ASSET);
-
-        // Returns response
-        return pass.file(request, blob, blob.type);
-    };
-
-    // Returns router
-    return safe(router as Router);
-}
 
 // Defines add router
 export function add(): Router {
@@ -105,6 +84,28 @@ export function add(): Router {
 
     // Returns router
     return safe(router);
+}
+
+// Defines assets router
+export function asset(): Router {
+    // Creates router
+    const router: Router<Bun.BunRequest<"/assets/:asset">> = async (request) => {
+        // Checks path
+        const path = nodePath.resolve(env.assetsPath, request.params.asset);
+        if(!path.startsWith(env.assetsPath))
+            throw new except.Exception(except.Code.MISSING_ASSET);
+
+        // Checks blob
+        const blob = Bun.file(path);
+        if(!(await blob.exists()))
+            throw new except.Exception(except.Code.MISSING_ASSET);
+
+        // Returns response
+        return pass.file(request, blob, blob.type);
+    };
+
+    // Returns router
+    return safe(router as Router);
 }
 
 // Defines resource router
@@ -200,6 +201,21 @@ export function list(): Router {
 
     // Returns router
     return safe(router);
+}
+
+// Defines list router
+export function preview(): Router {
+    // Creates router
+    const router: Router<Bun.BunRequest<"/preview/:uuid">> = async (request) => {
+        // Creates content
+        const content = await cdn.query(request.params.uuid);
+        
+        // Returns response
+        return pass.file(request, content.preview, "image/avif");
+    };
+
+    // Returns router
+    return safe(router as Router);
 }
 
 // Defines query router

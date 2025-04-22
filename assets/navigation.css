@@ -1,0 +1,130 @@
+/* Defines navigation */
+nav {
+    /* Applies background */
+    background-color: var(--sd-mono-200);
+    
+    /* Fixes size */
+    height: 30px;
+
+    /* Fixes spacing */
+    margin-bottom: 10px;
+    padding: 10px 15px;
+
+    /* Displays flex */
+    display: flex;
+    gap: 0px 15px;
+}
+
+nav button, nav input {
+    /* Applies background */
+    background-color: var(--sd-mono-400);
+
+    /* Removes borders */
+    border: none;
+    outline: none;
+
+    /* Creates animation */
+    opacity: 75%;
+    transition: opacity 0.2s ease;
+}
+
+nav button:hover, nav input:hover {
+    /* Applies animation */
+    opacity: 100%;
+}
+
+nav button {
+    /* Fixes size */
+    height: 30px;
+
+    /* Fixes spacing */
+    padding: 5px 10px;
+
+    /* Displays flex */
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+
+nav button:first-child {
+    /* Fixes spacing */
+    padding: 5px 10px 5px 15px;
+
+    /* Rounds borders */
+    border-radius: 15px 0px 0px 15px;
+}
+
+nav button:last-child {
+    /* Fixes spacing */
+    padding: 5px 15px 5px 10px;
+    
+    /* Rounds borders */
+    border-radius: 0px 15px 15px 0px;
+}
+
+nav button:only-child {
+    /* Fixes spacing */
+    padding: 5px 15px 5px 15px;
+
+    /* Rounds borders */
+    border-radius: 15px;
+}
+
+nav button.active {
+    /* Applies background */
+    background-color: var(--sd-mono-600);
+}
+
+nav input {
+    /* Fixes size */
+    height: 20px;
+    
+    /* Fixes spacing */
+    padding: 5px 20px;
+
+    /* Displays flex */
+    align-items: center;
+    display: flex;
+
+    /* Rounds borders */
+    border-radius: 15px;
+}
+
+/* Home */
+#home {
+    /* Displays flex */
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+
+#home span {
+    /* Applies font */
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 16px;
+}
+
+/* Order */
+#order {
+    /* Displays flex */
+    display: flex;
+}
+
+/* Sort */
+#sort {
+    /* Displays flex */
+    display: flex;
+}
+
+/* Search */
+#search {
+    /* Displays flex */
+    flex: 1;
+}
+
+/* Controls */
+#controls {
+    /* Displays flex */
+    display: flex;
+}

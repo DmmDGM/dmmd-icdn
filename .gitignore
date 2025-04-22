@@ -1,5 +1,6 @@
 files/
 node_modules/
+previews/
 temp/
 .env
 test.ts

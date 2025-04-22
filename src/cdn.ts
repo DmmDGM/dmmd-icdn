@@ -3,6 +3,7 @@ import bunSqlite from "bun:sqlite";
 import nodeFile from "node:fs/promises";
 import nodePath from "node:path";
 import { fileTypeFromBuffer } from "file-type";
+import sharp from "sharp";
 import * as env from "./env";
 import * as except from "./except";
 
@@ -14,6 +15,7 @@ export type Content = {
     file: Bun.BunFile;
     mime: string;
     name: string;
+    preview: Bun.BunFile;
     size: number;
     tags: string[];
     time: Date;
@@ -85,17 +87,84 @@ export function escape(text: string): string {
     return text.replaceAll(/[\\%_]/g, "\\$0");
 }
 
+// Defines snapshot function
+export async function snapshot(uuid: string, buffer: ArrayBuffer): Promise<Buffer> {
+    // Creates mime
+    const type = await fileTypeFromBuffer(buffer);
+    if(typeof type === "undefined")
+        throw new except.Exception(except.Code.UNSUPPORTED_MIME);
+    const mime = type.mime;
+
+    // Creates path
+    const path = nodePath.resolve(env.filesPath, uuid);
+    if(!(await nodeFile.exists(path)))
+        throw new except.Exception(except.Code.MISSING_CONTENT);
+
+    // Creates preview
+    let original = buffer;
+
+    // Generates frame
+    if(mime.startsWith("video/")) {
+        // Creates ffprobe
+        const ffprobe = Bun.spawn([
+            nodePath.resolve(env.ffmpegPath, "ffprobe"),
+            "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            path,
+        ], {
+            stdout: "pipe",
+            stderr: "ignore"
+        });
+    
+        // Creates time
+        const float = parseFloat((await new Response(ffprobe.stdout).text()).trim());
+        const seconds = isNaN(float) ? 0 : Math.trunc(Math.min(float / 2, 10));
+        const time = `00:00:${seconds.toString().padStart(2, "0")}`;
+    
+        // Creates ffmpeg
+        const ffmpeg = Bun.spawn([
+            nodePath.resolve(env.ffmpegPath, "ffmpeg"),
+            "-ss", time,
+            "-i", path,
+            "-frames:v", "1",
+            "-q:v", "2",
+            "-f", "image2",
+            "-vcodec", "png",
+            "pipe:1"
+        ], {
+            stdout: "pipe",
+            stderr: "ignore"
+        });
+    
+        // Creates stream
+        const clip = await new Response(ffmpeg.stdout).arrayBuffer();
+        original = clip;
+    }
+    
+    // Creates frame
+    const frame = await sharp(original).resize({ height: 240 }).avif().toBuffer();
+    
+    // Returns frame
+    return frame;
+}
+
 // Creates store
-export const store = bunSqlite.open(env.storePath);
+export const store = await create();
 
 // Defines create function
-export async function create(): Promise<void> {
+export async function create(): Promise<bunSqlite> {
     // Creates files directory
     if(!await nodeFile.exists(env.filesPath))
         await nodeFile.mkdir(env.filesPath);
 
-    // Creates store file
-    store.run(`
+    // Creates previews directory
+    if(!await nodeFile.exists(env.previewsPath))
+        await nodeFile.mkdir(env.previewsPath);
+
+    // Creates database
+    const database = bunSqlite.open(env.storePath);
+    database.run(`
         CREATE TABLE IF NOT EXISTS Contents (
             ContentId TEXT UNIQUE PRIMARY KEY,
             Data TEXT NOT NULL,
@@ -107,6 +176,9 @@ export async function create(): Promise<void> {
             Time INTEGER NOT NULL
         );
     `);
+
+    // Returns database
+    return database;
 }
 
 // Defines info function
@@ -160,6 +232,7 @@ export async function query(uuid: string): Promise<Content> {
 
     // Creates content
     const file = Bun.file(nodePath.resolve(env.filesPath, schema.ContentId));
+    const preview = Bun.file(nodePath.resolve(env.previewsPath, schema.ContentId));
     const content = {
         buffer: await file.arrayBuffer(),
         data: JSON.parse(schema.Data),
@@ -168,6 +241,7 @@ export async function query(uuid: string): Promise<Content> {
         size: schema.Size,
         mime: schema.Mime,
         name: schema.Name,
+        preview: preview,
         tags: schema.Tags.split(","),
         time: new Date(schema.Time),
         uuid: schema.ContentId
@@ -175,24 +249,6 @@ export async function query(uuid: string): Promise<Content> {
 
     // Returns content
     return content;
-}
-
-// Defines summarize function
-export async function summarize(content: Content): Promise<Summary> {
-    // Creates summary
-    const summary: Summary = {
-        data: content.data,
-        extension: content.extension,
-        mime: content.mime,
-        name: content.name,
-        size: content.size,
-        tags: content.tags,
-        time: content.time.getTime(),
-        uuid: content.uuid
-    };
-
-    // Returns summary
-    return summary;
 }
 
 // Creates list function
@@ -355,6 +411,7 @@ export async function add(source: Source): Promise<Content> {
 
     // Creates file
     const file = Bun.file(nodePath.resolve(env.filesPath, uuid));
+    const preview = Bun.file(nodePath.resolve(env.previewsPath, uuid));
 
     // Creates content
     const content: Content = {
@@ -364,6 +421,7 @@ export async function add(source: Source): Promise<Content> {
         file: file,
         mime: mime,
         name: source.name,
+        preview: preview,
         size: size,
         tags: Array.from(new Set(source.tags)),
         time: source.time,
@@ -372,6 +430,7 @@ export async function add(source: Source): Promise<Content> {
 
     // Updates values
     await content.file.write(content.buffer);
+    await content.preview.write(await snapshot(content.uuid, content.buffer));
     store.run(`
         INSERT INTO Contents (ContentId, Data, Extension, Mime, Name, Size, Tags, Time)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -453,8 +512,10 @@ export async function update(uuid: string, source: Partial<Source>): Promise<Con
     values.push(uuid);
 
     // Updates values
-    if(typeof source.buffer !== "undefined")
+    if(typeof source.buffer !== "undefined") {
         await original.file.write(source.buffer);
+        await original.preview.write(await snapshot(uuid, source.buffer));
+    }
     store.run(`
         UPDATE Contents
         SET ${keys.map((key) => `${key} = ?`).join(", ")}
@@ -479,6 +540,7 @@ export async function remove(uuid: string): Promise<Content> {
 
     // Updates values
     await content.file.delete();
+    await content.preview.delete();
     store.run(`
         DELETE FROM Contents
         WHERE ContentId = ?;
@@ -486,6 +548,24 @@ export async function remove(uuid: string): Promise<Content> {
 
     // Returns content
     return content;
+}
+
+// Defines summarize function
+export async function summarize(content: Content): Promise<Summary> {
+    // Creates summary
+    const summary: Summary = {
+        data: content.data,
+        extension: content.extension,
+        mime: content.mime,
+        name: content.name,
+        size: content.size,
+        tags: content.tags,
+        time: content.time.getTime(),
+        uuid: content.uuid
+    };
+
+    // Returns summary
+    return summary;
 }
 
 // Ensures creation

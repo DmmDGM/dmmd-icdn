@@ -1,0 +1,27 @@
+/* Defines gallery */
+#gallery {
+    display: flex;
+    padding: 0px 10px 10px 10px;
+    flex-wrap: wrap;
+    gap: 10px 10px;
+    /* flex: 1; */
+    overflow-y: scroll;
+}
+
+#gallery .box {
+    padding: 10px;
+    border: none;
+    outline: none;
+    border-radius: 5px;
+    background-color: var(--sd-mono-200);
+    opacity: 75%;
+    transition: opacity 0.2s ease;
+}
+
+#gallery .box:hover {
+    opacity: 100%;
+}
+
+#gallery .item {
+    height: 250px;
+}
